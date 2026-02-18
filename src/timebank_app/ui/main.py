@@ -219,7 +219,7 @@ def app_main(page: ft.Page) -> None:
         autoplay=False,
         release_mode=fta.ReleaseMode.STOP,
     )
-    page.overlay.append(audio_player)
+    page.services.append(audio_player)
 
     async def play_sound_by_name(sound_name: str) -> None:
         if not sound_name:
