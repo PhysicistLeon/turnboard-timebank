@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import flet as ft
+import flet_audio as fta
 
 from timebank_app.app.controller import GameController
 from timebank_app.domain.commands import (
@@ -214,6 +215,38 @@ def app_main(page: ft.Page) -> None:
             rules=rules_value,
         )
 
+    audio_player = fta.Audio(
+        autoplay=False,
+        release_mode=fta.ReleaseMode.STOP,
+    )
+    page.overlay.append(audio_player)
+
+    async def play_sound_by_name(sound_name: str) -> None:
+        if not sound_name:
+            return
+        source = controller.sound_repo.resolve(sound_name)
+        if source is None:
+            feedback.value = f"Звук не найден: {sound_name}"
+            page.update()
+            return
+        audio_player.src = str(source.resolve())
+        await audio_player.play(0)
+
+    async def play_sounds_for_events(events: list[Any]) -> None:
+        queued: list[str] = []
+        for event in events:
+            if event.event_type == "TURN_END":
+                player = event.data.get("player", "")
+                for cfg in controller.state.players:
+                    if cfg.name == player and cfg.sound_tap:
+                        queued.append(cfg.sound_tap)
+                        break
+            if event.event_type == "WARN_LONG_TURN" and controller.state.rules.warn_sound:
+                queued.append(controller.state.rules.warn_sound)
+
+        for sound_name in queued:
+            await play_sound_by_name(sound_name)
+
     def sound_options() -> list[ft.dropdown.Option]:
         options = [ft.dropdown.Option("", "—")]
         options.extend(ft.dropdown.Option(name) for name in controller.sound_repo.list_files())
@@ -266,12 +299,13 @@ def app_main(page: ft.Page) -> None:
         dialog.open = True
         page.update()
 
-    def refresh_tick() -> None:
+    async def refresh_tick() -> None:
         if not game_visible:
             return
         if controller.state.mode != Mode.RUNNING:
             return
-        controller.dispatch(CmdTick(now_mono=time.monotonic()))
+        result = controller.dispatch(CmdTick(now_mono=time.monotonic()))
+        await play_sounds_for_events(result.events)
         redraw_game()
 
     def redraw_game() -> None:
@@ -659,9 +693,10 @@ def app_main(page: ft.Page) -> None:
         page.clean()
         feedback.value = ""
 
-        def do_tap(_: ft.ControlEvent) -> None:
+        async def do_tap(_: ft.ControlEvent) -> None:
             try:
-                controller.dispatch(CmdTap(now_mono=time.monotonic()))
+                result = controller.dispatch(CmdTap(now_mono=time.monotonic()))
+                await play_sounds_for_events(result.events)
                 redraw_game()
             except CommandError as exc:
                 feedback.value = str(exc)
@@ -706,7 +741,7 @@ def app_main(page: ft.Page) -> None:
 
     async def _ticker_loop() -> None:
         while game_visible:
-            refresh_tick()
+            await refresh_tick()
             await asyncio.sleep(0.25)
 
     show_setup()
