@@ -121,11 +121,11 @@ static func decide(state: Model.GameState, cmd: Dictionary, now_mono_ms: int, ct
 		Const.CMD_ADMIN_AUTH:
 			if state.phase != Const.Phase.TECH_PAUSE:
 				return _err(out, "Admin auth allowed only in TECH_PAUSE")
-			var pass: String = String(cmd.get("password", ""))
+			var password_input: String = String(cmd.get("password", ""))
 			var real: String = String(ctx.get("admin_password", ""))
-			if pass == "" or real == "":
+			if password_input == "" or real == "":
 				return _err(out, "Password not configured")
-			if pass == real:
+			if password_input == real:
 				events.append({"type": Const.EV_ADMIN_AUTH_OK})
 				events.append({"type": Const.EV_ADMIN_MODE_ON})
 			else:
