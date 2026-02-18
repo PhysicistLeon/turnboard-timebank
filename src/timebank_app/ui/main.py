@@ -215,8 +215,11 @@ def app_main(page: ft.Page) -> None:
         )
 
     def sound_options() -> list[ft.dropdown.Option]:
+        files = controller.sound_repo.list_files()
         options = [ft.dropdown.Option("", "—")]
-        options.extend(ft.dropdown.Option(name) for name in controller.sound_repo.list_files())
+        if files:
+            options.append(ft.dropdown.Option("__random__", "Случайный звук"))
+        options.extend(ft.dropdown.Option(name) for name in files)
         return options
 
     def open_color_picker(
@@ -511,15 +514,22 @@ def app_main(page: ft.Page) -> None:
                     {"player": player_name, "value": e.control.value or ""},
                 ),
             )
-            bank_control: ft.Control = ft.TextField(
+            bank_field = ft.TextField(
                 value=str(int(bank_seconds)),
                 width=120,
-                on_submit=lambda e: apply_pause_edit(
+            )
+
+            def apply_bank(_=None) -> None:
+                apply_pause_edit(
                     player_name,
                     "set_bank",
-                    {"player": player_name, "value": float(e.control.value)},
-                ),
-            )
+                    {"player": player_name, "value": float(bank_field.value)},
+                )
+
+            bank_field.on_submit = apply_bank
+            bank_field.on_blur = apply_bank
+            bank_control: ft.Control = ft.Row([bank_field, _button("OK", apply_bank)])
+
             color_button = _button(
                 "Цвет",
                 lambda _, name=player_name, color=cfg.color: open_color_picker(
@@ -543,6 +553,14 @@ def app_main(page: ft.Page) -> None:
                     color_button,
                 ]
             )
+            action_control: ft.Control = _button(
+                "Удалить",
+                lambda _: apply_pause_edit(
+                    player_name,
+                    "remove_player",
+                    {"player": player_name},
+                ),
+            )
         else:
             name_control = ft.Text(cfg.name)
             sound_control = ft.Text(cfg.sound_tap or "—")
@@ -558,6 +576,7 @@ def app_main(page: ft.Page) -> None:
                     ft.Text(cfg.color),
                 ]
             )
+            action_control = ft.Text("—")
 
         return ft.DataRow(
             cells=[
@@ -565,6 +584,7 @@ def app_main(page: ft.Page) -> None:
                 ft.DataCell(color_control),
                 ft.DataCell(sound_control),
                 ft.DataCell(bank_control),
+                ft.DataCell(action_control),
             ]
         )
 
@@ -631,6 +651,7 @@ def app_main(page: ft.Page) -> None:
                 ft.DataColumn(ft.Text("Цвет")),
                 ft.DataColumn(ft.Text("Звук")),
                 ft.DataColumn(ft.Text("Банк времени")),
+                ft.DataColumn(ft.Text("Действия")),
             ],
             rows=rows,
         )
