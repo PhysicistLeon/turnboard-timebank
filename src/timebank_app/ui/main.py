@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from pathlib import Path
 from typing import Any
@@ -15,9 +16,10 @@ from timebank_app.domain.commands import (
     CmdPauseOn,
     CmdStartGame,
     CmdTap,
+    CmdTick,
 )
 from timebank_app.domain.engine import CommandError, Decider
-from timebank_app.domain.models import OrderDir, PlayerConfig, Rules
+from timebank_app.domain.models import Mode, OrderDir, PlayerConfig, Rules
 from timebank_app.infra.effects import EffectSink, SoundRepo
 from timebank_app.infra.logging import LogWriter
 from timebank_app.infra.storage import ConfigStore
@@ -65,6 +67,13 @@ def _button(label: str, on_click) -> ft.Control:  # type: ignore[no-untyped-def]
 def _is_background_lifecycle_state(event_data: Any) -> bool:
     text = str(event_data).lower()
     return any(keyword in text for keyword in ("pause", "inactive", "hide", "background"))
+
+
+def _center_alignment() -> Any:
+    alignment_module = getattr(ft, "alignment", None)
+    if alignment_module is not None and hasattr(alignment_module, "center"):
+        return alignment_module.center
+    return ft.Alignment(0, 0)
 
 
 def _panel(*controls: ft.Control, title: str | None = None) -> ft.Control:
@@ -140,6 +149,15 @@ def app_main(page: ft.Page) -> None:
     exhausted_text = ft.Text("", color=ft.Colors.RED_300)
 
     admin_password = ft.TextField(label="Admin password", password=True, can_reveal_password=True)
+    game_visible = False
+
+    def refresh_tick() -> None:
+        if not game_visible:
+            return
+        if controller.state.mode != Mode.RUNNING:
+            return
+        controller.dispatch(CmdTick(now_mono=time.monotonic()))
+        redraw_game()
 
     def redraw_game() -> None:
         current = controller.state.current_player
@@ -171,7 +189,10 @@ def app_main(page: ft.Page) -> None:
         page.update()
 
     def show_setup() -> None:
+        nonlocal game_visible
+        game_visible = False
         page.clean()
+        feedback.value = ""
 
         def on_start(_: ft.ControlEvent) -> None:
             try:
@@ -222,7 +243,10 @@ def app_main(page: ft.Page) -> None:
         )
 
     def show_pause() -> None:
+        nonlocal game_visible
+        game_visible = False
         page.clean()
+        feedback.value = ""
         rows: list[ft.Control] = []
         for name in controller.state.order:
             rows.append(
@@ -292,7 +316,10 @@ def app_main(page: ft.Page) -> None:
         )
 
     def show_game() -> None:
+        nonlocal game_visible
+        game_visible = True
         page.clean()
+        feedback.value = ""
 
         def do_tap(_: ft.ControlEvent) -> None:
             try:
@@ -309,6 +336,7 @@ def app_main(page: ft.Page) -> None:
         def on_lifecycle_change(event: ft.ControlEvent) -> None:
             if _is_background_lifecycle_state(event.data):
                 controller.dispatch(CmdBackground(now_mono=time.monotonic()))
+                show_pause()
 
         page.on_app_lifecycle_state_change = on_lifecycle_change
 
@@ -317,7 +345,7 @@ def app_main(page: ft.Page) -> None:
             height=(page.height or 800) * 0.7,
             border_radius=24,
             bgcolor=ft.Colors.BLACK,
-            alignment=ft.alignment.center,
+            alignment=_center_alignment(),
             padding=24,
             content=ft.Column(
                 [player_text, timer_text, phase_text, exhausted_text],
@@ -335,7 +363,13 @@ def app_main(page: ft.Page) -> None:
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
         )
+        page.run_task(_ticker_loop)
         redraw_game()
+
+    async def _ticker_loop() -> None:
+        while game_visible:
+            refresh_tick()
+            await asyncio.sleep(0.25)
 
     if not store.get_password():
         page.clean()

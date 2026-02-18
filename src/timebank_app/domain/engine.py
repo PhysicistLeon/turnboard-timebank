@@ -13,6 +13,7 @@ from .commands import (
     CmdResume,
     CmdStartGame,
     CmdTap,
+    CmdTick,
     Command,
 )
 from .events import Event, ev
@@ -70,14 +71,44 @@ class Decider:
                 )
         return events
 
+    @staticmethod
+    def _runtime_sync_event(state: GameState, shadow: GameState, now_mono: float) -> Event | None:
+        if state.mode != Mode.RUNNING or state.current_player is None:
+            return None
+
+        if (
+            shadow.bank.get(state.current_player) == state.bank.get(state.current_player)
+            and shadow.turn.phase == state.turn.phase
+            and shadow.turn.phase_started_mono == state.turn.phase_started_mono
+            and shadow.turn.elapsed_no_cooldown == state.turn.elapsed_no_cooldown
+            and shadow.turn.warn_count == state.turn.warn_count
+        ):
+            return None
+
+        return ev(
+            "RUNTIME_SYNC",
+            player=state.current_player,
+            bank_after=shadow.bank[state.current_player],
+            phase=shadow.turn.phase.value,
+            phase_started_mono=shadow.turn.phase_started_mono,
+            elapsed_no_cooldown=shadow.turn.elapsed_no_cooldown,
+            warn_count=shadow.turn.warn_count,
+            now_mono=now_mono,
+        )
+
     def decide(self, state: GameState, command: Command) -> list[Event]:
         shadow = deepcopy(state)
         pre_events = self._advance_runtime(shadow, command.now_mono)
+        runtime_sync = self._runtime_sync_event(state, shadow, command.now_mono)
+        if runtime_sync is not None:
+            pre_events.append(runtime_sync)
 
         if isinstance(command, CmdStartGame):
             return self._decide_start(command)
         if isinstance(command, CmdTap):
-            return self._decide_tap(state, command)
+            return self._decide_tap(shadow, command, pre_events)
+        if isinstance(command, CmdTick):
+            return pre_events
         if isinstance(command, (CmdPauseOn, CmdBackground)):
             return self._decide_pause_on(state, command, pre_events)
         if isinstance(command, (CmdPauseOff, CmdResume)):
@@ -120,20 +151,23 @@ class Decider:
             ),
         ]
 
-    def _decide_tap(self, state: GameState, command: CmdTap) -> list[Event]:
-        if state.mode != Mode.RUNNING or state.current_player is None:
+    def _decide_tap(
+        self,
+        runtime_state: GameState,
+        command: CmdTap,
+        pre_events: list[Event],
+    ) -> list[Event]:
+        if runtime_state.mode != Mode.RUNNING or runtime_state.current_player is None:
             raise CommandError("Tap available only in running mode")
 
-        working = deepcopy(state)
-        calc_events = self._advance_runtime(working, command.now_mono)
-        current = working.current_player
-        next_player = self._next_player(working.order, current, working.order_dir)
-        return calc_events + [
+        current = runtime_state.current_player
+        next_player = self._next_player(runtime_state.order, current, runtime_state.order_dir)
+        return pre_events + [
             ev(
                 "TURN_END",
                 player=current,
-                bank_after=working.bank[current],
-                spent_no_cooldown=working.turn.elapsed_no_cooldown,
+                bank_after=runtime_state.bank[current],
+                spent_no_cooldown=runtime_state.turn.elapsed_no_cooldown,
                 now_mono=command.now_mono,
             ),
             ev(
@@ -266,6 +300,14 @@ def apply_event(state: GameState, event: Event) -> GameState:
         player = event.data["player"]
         state.bank[player] = event.data["bank_after"]
         state.last_turn_end = dict(event.data)
+
+    elif event.event_type == "RUNTIME_SYNC":
+        player = event.data["player"]
+        state.bank[player] = event.data["bank_after"]
+        state.turn.phase = TurnPhase(event.data["phase"])
+        state.turn.phase_started_mono = event.data["phase_started_mono"]
+        state.turn.elapsed_no_cooldown = event.data["elapsed_no_cooldown"]
+        state.turn.warn_count = event.data["warn_count"]
 
     elif event.event_type == "TECH_PAUSE_ON":
         state.mode = Mode.TECH_PAUSE
