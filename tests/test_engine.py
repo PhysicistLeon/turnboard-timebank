@@ -6,6 +6,7 @@ from timebank_app.domain.commands import (
     CmdPauseOn,
     CmdStartGame,
     CmdTap,
+    CmdTick,
 )
 from timebank_app.domain.engine import CommandError, Decider, apply_event
 from timebank_app.domain.models import GameState, OrderDir, PlayerConfig, Rules, TurnPhase
@@ -101,3 +102,13 @@ def test_setup_edit_without_admin_before_start():
         state, CmdAdminEdit(now_mono=1.0, edit_type="set_rules", payload={"cooldown": 1})
     )
     assert events[0].event_type == "SETUP_EDIT"
+
+
+def test_tick_advances_runtime_without_tap():
+    decider = Decider("pw")
+    state = evolve(GameState(), decider.decide(GameState(), mk_start()))
+    state = evolve(state, decider.decide(state, CmdTick(now_mono=27.0)))
+    assert state.current_player == "A"
+    assert state.turn.phase == TurnPhase.COUNTDOWN
+    assert state.bank["A"] == 78
+

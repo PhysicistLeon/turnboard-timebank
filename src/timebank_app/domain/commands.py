@@ -26,6 +26,11 @@ class CmdTap(Command):
 
 
 @dataclass(slots=True)
+class CmdTick(Command):
+    pass
+
+
+@dataclass(slots=True)
 class CmdPauseOn(Command):
     cause: str
 
