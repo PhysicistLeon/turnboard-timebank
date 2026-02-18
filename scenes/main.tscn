@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://cte7jhnirpgap"]
+
+[ext_resource type="Script" uid="uid://ubvnyscyjasn" path="res://scripts/control.gd" id="1_0wfyh"]
+[ext_resource type="AudioStream" uid="uid://ko23qqls4dnn" path="res://sounds/kriakalka.mp3" id="2_sugp2"]
+
+[node name="Node2D" type="Node2D" unique_id=1322271744]
+
+[node name="Control" type="Control" parent="." unique_id=202730017]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 567.0
+offset_top = 301.0
+offset_right = 567.0
+offset_bottom = 301.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_0wfyh")
+
+[node name="CenterContainer" type="CenterContainer" parent="Control" unique_id=877674242]
+layout_mode = 0
+offset_left = -362.0
+offset_top = -225.0
+offset_right = 362.0
+offset_bottom = 226.0
+
+[node name="Button" type="Button" parent="Control/CenterContainer" unique_id=1816067661]
+layout_mode = 2
+text = "PLAY"
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Control" unique_id=836579003]
+stream = ExtResource("2_sugp2")
