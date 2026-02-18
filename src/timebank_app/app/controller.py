@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 
 from timebank_app.domain.commands import CmdTap, Command
@@ -52,6 +53,11 @@ class GameController:
                 if cfg.name == player:
                     sound_name = cfg.sound_tap
                     break
+
+            if sound_name == "__random__":
+                files = self.sound_repo.list_files()
+                sound_name = random.choice(files) if files else ""
+
             self.effects.play_sound(self.sound_repo.resolve(sound_name))
             self.effects.vibrate()
 

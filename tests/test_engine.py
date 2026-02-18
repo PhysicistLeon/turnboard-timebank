@@ -104,6 +104,21 @@ def test_setup_edit_without_admin_before_start():
     assert events[0].event_type == "SETUP_EDIT"
 
 
+def test_remove_player_admin_edit():
+    decider = Decider("pw")
+    state = evolve(GameState(), decider.decide(GameState(), mk_start()))
+    state = evolve(state, decider.decide(state, CmdAdminAuth(now_mono=1.0, password="pw")))
+    state = evolve(
+        state,
+        decider.decide(
+            state,
+            CmdAdminEdit(now_mono=2.0, edit_type="remove_player", payload={"player": "B"}),
+        ),
+    )
+    assert state.order == ["A"]
+    assert "B" not in state.bank
+
+
 def test_tick_advances_runtime_without_tap():
     decider = Decider("pw")
     state = evolve(GameState(), decider.decide(GameState(), mk_start()))
@@ -111,4 +126,3 @@ def test_tick_advances_runtime_without_tap():
     assert state.current_player == "A"
     assert state.turn.phase == TurnPhase.COUNTDOWN
     assert state.bank["A"] == 78
-

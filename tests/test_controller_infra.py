@@ -45,6 +45,23 @@ def test_logging_and_effects_on_tap(tmp_path: Path):
     assert "tap.wav" in controller.effects.played_sounds
 
 
+def test_random_sound_selection_on_tap(tmp_path: Path):
+    controller = make_controller(tmp_path)
+    (tmp_path / "sounds" / "tap2.wav").write_text("dummy", encoding="utf-8")
+    controller.dispatch(
+        CmdStartGame(
+            now_mono=0.0,
+            game_id="g1",
+            players=[PlayerConfig(name="A", sound_tap="__random__"), PlayerConfig(name="B")],
+            order=["A", "B"],
+            order_dir=OrderDir.CLOCKWISE,
+            rules=Rules(bank_initial=30, cooldown=1, warn_every=5),
+        )
+    )
+    controller.dispatch(CmdTap(now_mono=3.0))
+    assert controller.effects.played_sounds[-1] in {"tap.wav", "tap2.wav"}
+
+
 def test_keep_awake_toggles_with_pause(tmp_path: Path):
     controller = make_controller(tmp_path)
     start(controller)
@@ -55,9 +72,24 @@ def test_keep_awake_toggles_with_pause(tmp_path: Path):
 
 def test_config_store_roundtrip(tmp_path: Path):
     cfg = ConfigStore(tmp_path / "config.ini")
-    assert cfg.get_password() is None
-    cfg.save_password("secret")
-    assert cfg.get_password() == "secret"
+    payload_players = [
+        PlayerConfig(name="A", color="#112233", sound_tap="tap.wav"),
+        PlayerConfig(name="B", color="#445566", sound_tap=""),
+    ]
+    payload_rules = Rules(bank_initial=90, cooldown=3, warn_every=15)
+    cfg.save_game_config(
+        players=payload_players,
+        order=["A", "B"],
+        order_dir=OrderDir.COUNTERCLOCKWISE,
+        rules=payload_rules,
+    )
+
+    loaded = cfg.load_game_config()
+    assert loaded is not None
+    assert loaded["order"] == ["A", "B"]
+    assert loaded["order_dir"] == OrderDir.COUNTERCLOCKWISE
+    assert loaded["rules"].bank_initial == 90
+    assert [player.name for player in loaded["players"]] == ["A", "B"]
 
 
 def test_sound_repo_empty(tmp_path: Path):

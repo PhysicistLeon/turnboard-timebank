@@ -60,6 +60,7 @@ class CmdAdminEdit(Command):
         "rename_player",
         "set_color",
         "set_sound_tap",
+        "remove_player",
         "new_game",
         "undo",
     ]
