@@ -13,7 +13,10 @@ var scenes := {
 
 func _ready() -> void:
 	GameController.route_changed.connect(_on_route)
-	_on_route("password")
+	var initial_route: String = GameController.get_current_route()
+	if initial_route == "":
+		initial_route = "password"
+	_on_route(initial_route)
 
 func _on_route(route: String) -> void:
 	if not scenes.has(route):

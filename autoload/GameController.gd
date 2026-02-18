@@ -13,6 +13,7 @@ var sound = SoundServiceScript.new()
 
 var state := Model.GameState.new()
 var seq: int = 1
+var _current_route: String = ""
 
 var _tick_accum := 0.0
 const TICK_PERIOD := 0.10
@@ -27,9 +28,9 @@ func _ready() -> void:
 		_seed_default_players()
 
 	if not storage.has_password():
-		route_changed.emit("password")
+		_set_route("password")
 	else:
-		route_changed.emit("setup")
+		_set_route("setup")
 
 	dispatch({"type": Const.EV_APP_START}, true)
 
@@ -106,13 +107,22 @@ func _format_log_line(ev: Dictionary) -> String:
 func _apply_platform_effects() -> void:
 	if state.phase == Const.Phase.RUNNING:
 		DisplayServer.screen_set_keep_on(true)
-		route_changed.emit("game")
+		_set_route("game")
 	elif state.phase == Const.Phase.TECH_PAUSE:
 		DisplayServer.screen_set_keep_on(false)
-		route_changed.emit("pause")
+		_set_route("pause")
 	else:
 		DisplayServer.screen_set_keep_on(false)
-		route_changed.emit("setup")
+		_set_route("setup")
+
+func get_current_route() -> String:
+	return _current_route
+
+func _set_route(route: String) -> void:
+	if _current_route == route:
+		return
+	_current_route = route
+	route_changed.emit(route)
 
 func _play_tap_for_current() -> void:
 	var player_name: String = state.current
