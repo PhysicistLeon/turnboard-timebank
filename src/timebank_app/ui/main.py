@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import importlib.util
+import random
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -32,6 +33,7 @@ from timebank_app.ui.formatting import format_mm_ss
 HALF_PULSE = 0.5
 PANEL_WIDTH = 960
 ADMIN_PASSWORD = "password"
+RANDOM_SOUND_TOKEN = "__random__"
 
 
 def create_controller(data_dir: Path) -> GameController:
@@ -234,12 +236,28 @@ def app_main(page: ft.Page) -> None:
     )
     page.services.append(audio_player)
 
+    def _resolve_requested_sound(sound_name: str) -> str:
+        if sound_name != RANDOM_SOUND_TOKEN:
+            return sound_name
+
+        available = controller.sound_repo.list_files()
+        if not available:
+            feedback.value = "Нет доступных звуков для случайного выбора"
+            page.update()
+            return ""
+        return random.choice(available)
+
     async def play_sound_by_name(sound_name: str) -> None:
         if not sound_name:
             return
-        source = controller.sound_repo.resolve(sound_name)
+
+        resolved_sound_name = _resolve_requested_sound(sound_name)
+        if not resolved_sound_name:
+            return
+
+        source = controller.sound_repo.resolve(resolved_sound_name)
         if source is None:
-            feedback.value = f"Звук не найден: {sound_name}"
+            feedback.value = f"Звук не найден: {resolved_sound_name}"
             page.update()
             return
 
@@ -282,7 +300,10 @@ def app_main(page: ft.Page) -> None:
             schedule_sound(sound_name)
 
     def sound_options() -> list[ft.dropdown.Option]:
-        options = [ft.dropdown.Option("", "—")]
+        options = [
+            ft.dropdown.Option("", "—"),
+            ft.dropdown.Option(RANDOM_SOUND_TOKEN, "Случайный звук"),
+        ]
         options.extend(ft.dropdown.Option(name) for name in controller.sound_repo.list_files())
         return options
 
