@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="turnboard-timebank"
-run/main_scene="uid://cte7jhnirpgap"
+run/main_scene="res://ui/Main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -25,3 +25,13 @@ rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+
+[autoload]
+
+GameController="*res://autoload/GameController.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/handheld/orientation=1
