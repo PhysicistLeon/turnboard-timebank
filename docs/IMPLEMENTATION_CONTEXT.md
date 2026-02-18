@@ -5,10 +5,14 @@
 ## Текущее состояние
 - Архитектура: Variant 2 (event-sourced).
 - Язык/стек: Python + Flet.
+- Целевые версии рантайма:
+  - Flet: `0.80.5`
+  - Flutter: `3.38.7`
+  - Pyodide: `0.27.7`
 - Главные модули:
   - `src/timebank_app/domain/` — модели, команды, события, decider/reducer.
   - `src/timebank_app/app/controller.py` — оркестрация `decide -> log -> apply -> effects`.
-  - `src/timebank_app/infra/` — ini, лог, эффекты/звуки.
+  - `src/timebank_app/infra/` — ini-конфиг игры, лог, эффекты/звуки.
   - `src/timebank_app/ui/main.py` — экраны Setup/Game/Tech Pause.
 
 ## Ключевые ограничения из ТЗ
@@ -17,6 +21,7 @@
 - `warn_every` только после `cooldown`.
 - `background` должен ставить в tech pause без смены current.
 - `TURN_UNDO` восстанавливает last `TURN_END`.
+- UI-таймер должен отображаться строго в формате `MM:SS`; при перерасходе времени — `-MM:SS`.
 
 ## Быстрые команды проверки
 ```bash

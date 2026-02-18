@@ -258,6 +258,18 @@ def _apply_edit(state: GameState, etype: str, payload: dict) -> None:
         for player in state.players:
             if player.name == payload["player"]:
                 player.sound_tap = payload["value"]
+    elif etype == "remove_player":
+        target = payload["player"]
+        if target not in state.order or len(state.order) <= 1:
+            return
+
+        idx = state.order.index(target)
+        state.order = [name for name in state.order if name != target]
+        state.bank.pop(target, None)
+        state.players = [player for player in state.players if player.name != target]
+
+        if state.current_player == target:
+            state.current_player = state.order[idx % len(state.order)] if state.order else None
     elif etype == "new_game":
         state.game_id = payload["game_id"]
         state.bank = {name: state.rules.bank_initial for name in state.order}
