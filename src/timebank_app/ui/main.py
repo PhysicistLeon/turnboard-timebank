@@ -117,7 +117,7 @@ def _dropdown(
 ) -> ft.Dropdown:  # type: ignore[no-untyped-def]
     control = ft.Dropdown(options=options, value=value, width=width, label=label)
     if on_change is not None:
-        control.on_change = on_change
+        control.on_select = on_change
     return control
 
 
@@ -177,9 +177,9 @@ def app_main(page: ft.Page) -> None:
 
     game_visible = False
     setup_players = [
-        PlayerConfig(name="Alice", color="#FFC107"),
-        PlayerConfig(name="Bob", color="#03A9F4"),
-        PlayerConfig(name="Carol", color="#8BC34A"),
+        PlayerConfig(name="Alice", color="#FFC107", sound_tap="__random__"),
+        PlayerConfig(name="Bob", color="#03A9F4", sound_tap="__random__"),
+        PlayerConfig(name="Carol", color="#8BC34A", sound_tap="__random__"),
     ]
 
     saved = store.load_game_config()
@@ -190,6 +190,9 @@ def app_main(page: ft.Page) -> None:
         rules_bank.value = str(int(rules.bank_initial))
         rules_cooldown.value = str(int(rules.cooldown))
         rules_warn.value = str(rules.warn_every)
+        for player in setup_players:
+            if not player.sound_tap:
+                player.sound_tap = "__random__"
 
     def persist_current_config() -> None:
         if controller.state.players:
@@ -216,11 +219,15 @@ def app_main(page: ft.Page) -> None:
 
     def sound_options() -> list[ft.dropdown.Option]:
         files = controller.sound_repo.list_files()
-        options = [ft.dropdown.Option("", "—")]
-        if files:
-            options.append(ft.dropdown.Option("__random__", "Случайный звук"))
+        options = [
+            ft.dropdown.Option("", "—"),
+            ft.dropdown.Option("__random__", "Случайный звук"),
+        ]
         options.extend(ft.dropdown.Option(name) for name in files)
         return options
+
+    def default_sound_value(value: str) -> str:
+        return value or "__random__"
 
     def open_color_picker(
         player_name: str,
@@ -314,7 +321,7 @@ def app_main(page: ft.Page) -> None:
             name_field = ft.TextField(value=player.name, width=160)
             sound_field = _dropdown(
                 options=sound_options(),
-                value=player.sound_tap,
+                value=default_sound_value(player.sound_tap),
                 width=180,
             )
 
@@ -325,7 +332,7 @@ def app_main(page: ft.Page) -> None:
                 setup_players[index].sound_tap = event.control.value or ""
 
             name_field.on_change = on_name_change
-            sound_field.on_change = on_sound_change
+            sound_field.on_select = on_sound_change
 
             color_preview = ft.Container(width=26, height=26, bgcolor=player.color, border_radius=6)
 
@@ -409,7 +416,9 @@ def app_main(page: ft.Page) -> None:
                 feedback.value = "Имена игроков должны быть уникальны"
                 page.update()
                 return
-            setup_players.append(PlayerConfig(name=name, color="#FFFFFF"))
+            setup_players.append(
+                PlayerConfig(name=name, color="#FFFFFF", sound_tap="__random__")
+            )
             new_player_name.value = ""
             persist_current_config()
             show_setup()
@@ -495,6 +504,7 @@ def app_main(page: ft.Page) -> None:
         editable = controller.state.admin_mode
 
         if editable:
+            selected_sound = {"value": default_sound_value(cfg.sound_tap)}
             name_control: ft.Control = ft.TextField(
                 value=cfg.name,
                 width=160,
@@ -504,31 +514,47 @@ def app_main(page: ft.Page) -> None:
                     {"old": player_name, "new": e.control.value.strip()},
                 ),
             )
-            sound_control: ft.Control = _dropdown(
+            sound_field = _dropdown(
                 width=180,
                 options=sound_options(),
-                value=cfg.sound_tap,
-                on_change=lambda e: apply_pause_edit(
-                    player_name,
-                    "set_sound_tap",
-                    {"player": player_name, "value": e.control.value or ""},
-                ),
+                value=default_sound_value(cfg.sound_tap),
             )
+
+            def on_sound_select(event: ft.ControlEvent) -> None:
+                selected_sound["value"] = event.control.value or ""
+
+            sound_field.on_select = on_sound_select
+            sound_control: ft.Control = sound_field
             bank_field = ft.TextField(
                 value=str(int(bank_seconds)),
                 width=120,
             )
 
-            def apply_bank(_=None) -> None:
-                apply_pause_edit(
-                    player_name,
-                    "set_bank",
-                    {"player": player_name, "value": float(bank_field.value)},
-                )
+            def apply_row_changes(_=None) -> None:
+                try:
+                    controller.dispatch(
+                        CmdAdminEdit(
+                            now_mono=time.monotonic(),
+                            edit_type="set_sound_tap",
+                            payload={"player": player_name, "value": selected_sound["value"]},
+                        )
+                    )
+                    controller.dispatch(
+                        CmdAdminEdit(
+                            now_mono=time.monotonic(),
+                            edit_type="set_bank",
+                            payload={"player": player_name, "value": float(bank_field.value)},
+                        )
+                    )
+                    persist_current_config()
+                    show_pause()
+                except (CommandError, ValueError) as exc:
+                    feedback.value = str(exc)
+                    page.update()
 
-            bank_field.on_submit = apply_bank
-            bank_field.on_blur = apply_bank
-            bank_control: ft.Control = ft.Row([bank_field, _button("OK", apply_bank)])
+            bank_field.on_submit = apply_row_changes
+            bank_field.on_blur = apply_row_changes
+            bank_control: ft.Control = ft.Row([bank_field, _button("OK", apply_row_changes)])
 
             color_button = _button(
                 "Цвет",
