@@ -11,9 +11,20 @@ config_version=5
 [application]
 
 config/name="turnboard-timebank"
-run/main_scene="uid://cte7jhnirpgap"
+run/main_scene="res://ui/Main.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameController="*res://autoload/GameController.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/stretch/mode="canvas_items"
+window/handheld/orientation=1
 
 [physics]
 
