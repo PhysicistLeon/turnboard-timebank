@@ -1,6 +1,4 @@
 extends RefCounted
-class_name Logger
-
 var path: String = "user://logs/events.log"
 
 func ensure_dir() -> void:
