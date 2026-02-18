@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import flet as ft
+import flet_audio as fta
 
 from timebank_app.app.controller import GameController
 from timebank_app.domain.commands import (
@@ -61,6 +62,19 @@ def _button(label: str, on_click) -> ft.Control:  # type: ignore[no-untyped-def]
         return elevated_cls(text=label, on_click=on_click)
     except TypeError:
         return elevated_cls(label, on_click=on_click)
+
+
+def _small_play_button(on_click) -> ft.Control:  # type: ignore[no-untyped-def]
+    icon_button_cls = getattr(ft, "IconButton", None)
+    icons_cls = getattr(ft, "Icons", None)
+    if icon_button_cls is not None and icons_cls is not None and hasattr(icons_cls, "PLAY_ARROW"):
+        return icon_button_cls(
+            icon=icons_cls.PLAY_ARROW,
+            icon_size=16,
+            tooltip="Тест звука",
+            on_click=on_click,
+        )
+    return _button("▶", on_click)
 
 
 def _is_background_lifecycle_state(event_data: Any) -> bool:
@@ -214,6 +228,57 @@ def app_main(page: ft.Page) -> None:
             rules=rules_value,
         )
 
+    audio_player = fta.Audio(
+        autoplay=False,
+        release_mode=fta.ReleaseMode.STOP,
+    )
+    page.services.append(audio_player)
+
+    async def play_sound_by_name(sound_name: str) -> None:
+        if not sound_name:
+            return
+        source = controller.sound_repo.resolve(sound_name)
+        if source is None:
+            feedback.value = f"Звук не найден: {sound_name}"
+            page.update()
+            return
+
+        try:
+            audio_player.src = source.read_bytes()
+            await audio_player.play(0)
+        except RuntimeError as exc:
+            feedback.value = f"Не удалось воспроизвести звук: {exc}"
+            page.update()
+
+    def play_selected_sound(sound_name: str) -> None:
+        if not sound_name:
+            feedback.value = "Выберите звук для теста"
+            page.update()
+            return
+
+        page.run_task(play_sound_by_name, sound_name)
+
+    def sound_name_for_player(player_name: str) -> str:
+        for player in controller.state.players:
+            if player.name == player_name:
+                return player.sound_tap
+        return ""
+
+    async def play_sounds_for_events(events: list[Any]) -> None:
+        queued: list[str] = []
+        for event in events:
+            if event.event_type == "TURN_END":
+                player = event.data.get("player", "")
+                for cfg in controller.state.players:
+                    if cfg.name == player and cfg.sound_tap:
+                        queued.append(cfg.sound_tap)
+                        break
+            if event.event_type == "WARN_LONG_TURN" and controller.state.rules.warn_sound:
+                queued.append(controller.state.rules.warn_sound)
+
+        for sound_name in queued:
+            await play_sound_by_name(sound_name)
+
     def sound_options() -> list[ft.dropdown.Option]:
         options = [ft.dropdown.Option("", "—")]
         options.extend(ft.dropdown.Option(name) for name in controller.sound_repo.list_files())
@@ -266,12 +331,13 @@ def app_main(page: ft.Page) -> None:
         dialog.open = True
         page.update()
 
-    def refresh_tick() -> None:
+    async def refresh_tick() -> None:
         if not game_visible:
             return
         if controller.state.mode != Mode.RUNNING:
             return
-        controller.dispatch(CmdTick(now_mono=time.monotonic()))
+        result = controller.dispatch(CmdTick(now_mono=time.monotonic()))
+        await play_sounds_for_events(result.events)
         redraw_game()
 
     def redraw_game() -> None:
@@ -324,6 +390,10 @@ def app_main(page: ft.Page) -> None:
             name_field.on_change = on_name_change
             sound_field.on_change = on_sound_change
 
+            def on_test_sound(_: ft.ControlEvent, index: int = idx) -> None:
+                play_selected_sound(setup_players[index].sound_tap)
+
+            sound_test_button = _small_play_button(on_test_sound)
             color_preview = ft.Container(width=26, height=26, bgcolor=player.color, border_radius=6)
 
             def on_color_selected(
@@ -352,7 +422,7 @@ def app_main(page: ft.Page) -> None:
                         ft.DataCell(ft.Text(str(idx + 1))),
                         ft.DataCell(name_field),
                         ft.DataCell(ft.Row([color_preview, color_button])),
-                        ft.DataCell(sound_field),
+                        ft.DataCell(ft.Row([sound_field, sound_test_button], spacing=8)),
                         ft.DataCell(ft.Text(format_mm_ss(float(rules_bank.value or 0)))),
                         ft.DataCell(
                             _button("Удалить", lambda _, index=idx: remove_setup_player(index))
@@ -501,7 +571,7 @@ def app_main(page: ft.Page) -> None:
                     {"old": player_name, "new": e.control.value.strip()},
                 ),
             )
-            sound_control: ft.Control = _dropdown(
+            sound_dropdown = _dropdown(
                 width=180,
                 options=sound_options(),
                 value=cfg.sound_tap,
@@ -510,6 +580,14 @@ def app_main(page: ft.Page) -> None:
                     "set_sound_tap",
                     {"player": player_name, "value": e.control.value or ""},
                 ),
+            )
+
+            def on_test_sound(_: ft.ControlEvent, player: str = player_name) -> None:
+                play_selected_sound(sound_name_for_player(player))
+
+            sound_control: ft.Control = ft.Row(
+                [sound_dropdown, _small_play_button(on_test_sound)],
+                spacing=8,
             )
             bank_control: ft.Control = ft.TextField(
                 value=str(int(bank_seconds)),
@@ -545,7 +623,14 @@ def app_main(page: ft.Page) -> None:
             )
         else:
             name_control = ft.Text(cfg.name)
-            sound_control = ft.Text(cfg.sound_tap or "—")
+
+            def on_test_sound_readonly(_: ft.ControlEvent, player: str = player_name) -> None:
+                play_selected_sound(sound_name_for_player(player))
+
+            sound_control = ft.Row(
+                [ft.Text(cfg.sound_tap or "—"), _small_play_button(on_test_sound_readonly)],
+                spacing=8,
+            )
             bank_control = ft.Text(f"{format_mm_ss(bank_seconds)} ({int(bank_seconds)}s)")
             color_control = ft.Row(
                 [
@@ -659,9 +744,10 @@ def app_main(page: ft.Page) -> None:
         page.clean()
         feedback.value = ""
 
-        def do_tap(_: ft.ControlEvent) -> None:
+        async def do_tap(_: ft.ControlEvent) -> None:
             try:
-                controller.dispatch(CmdTap(now_mono=time.monotonic()))
+                result = controller.dispatch(CmdTap(now_mono=time.monotonic()))
+                await play_sounds_for_events(result.events)
                 redraw_game()
             except CommandError as exc:
                 feedback.value = str(exc)
@@ -706,7 +792,7 @@ def app_main(page: ft.Page) -> None:
 
     async def _ticker_loop() -> None:
         while game_visible:
-            refresh_tick()
+            await refresh_tick()
             await asyncio.sleep(0.25)
 
     show_setup()
