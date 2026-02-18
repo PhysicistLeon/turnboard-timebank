@@ -6,6 +6,7 @@ signal route_changed(route: String)
 const StorageScript := preload("res://infra/Storage.gd")
 const LoggerScript := preload("res://infra/Logger.gd")
 const SoundServiceScript := preload("res://infra/SoundService.gd")
+const UiClickStream: AudioStream = preload("res://sounds/kriakalka.mp3")
 
 var storage = StorageScript.new()
 var event_logger = LoggerScript.new()
@@ -121,11 +122,20 @@ func _apply_platform_effects() -> void:
 func get_current_route() -> String:
 	return _current_route
 
+func set_route(route: String) -> void:
+	_set_route(route)
+
 func _set_route(route: String) -> void:
 	if _current_route == route:
 		return
 	_current_route = route
 	route_changed.emit(route)
+
+func play_ui_click() -> void:
+	if UiClickStream != null:
+		sound.play_stream(UiClickStream)
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+		Input.vibrate_handheld(40, 0.7)
 
 func _play_tap_for_current() -> void:
 	var player_name: String = state.current

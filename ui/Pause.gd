@@ -36,18 +36,23 @@ func _render(s: Model.GameState) -> void:
 	$VBox/AdminActions.visible = s.admin_mode
 
 func _continue() -> void:
+	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_TECH_PAUSE_OFF})
 
 func _new_game() -> void:
+	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_NEW_GAME})
 
 func _admin_auth() -> void:
+	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_ADMIN_AUTH, "password": admin_pass.text})
 	admin_pass.text = ""
 	admin_status.text = "sent"
 
 func _undo() -> void:
+	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_UNDO})
 
 func _reverse() -> void:
+	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_ORDER_REVERSE})

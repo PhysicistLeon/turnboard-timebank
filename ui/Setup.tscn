@@ -29,10 +29,41 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 36
 text = "Игроки"
 
-[node name="PlayersList" type="ItemList" parent="VBox"]
+[node name="PlayersTableHeader" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SelectHdr" type="Label" parent="VBox/PlayersTableHeader"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+
+[node name="NameHdr" type="Label" parent="VBox/PlayersTableHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "Имя"
+
+[node name="ColorHdr" type="Label" parent="VBox/PlayersTableHeader"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Цвет"
+
+[node name="BankHdr" type="Label" parent="VBox/PlayersTableHeader"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Банк"
+
+[node name="PlayersScroll" type="ScrollContainer" parent="VBox"]
+custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_vertical = 3
-fixed_icon_size = Vector2i(0, 56)
+
+[node name="PlayersEditor" type="VBoxContainer" parent="VBox/PlayersScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
 
 [node name="HBox1" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
@@ -113,3 +144,4 @@ text = "Старт"
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 modulate = Color(1, 0.3, 0.3, 1)
+
