@@ -64,6 +64,19 @@ def _button(label: str, on_click) -> ft.Control:  # type: ignore[no-untyped-def]
         return elevated_cls(label, on_click=on_click)
 
 
+def _small_play_button(on_click) -> ft.Control:  # type: ignore[no-untyped-def]
+    icon_button_cls = getattr(ft, "IconButton", None)
+    icons_cls = getattr(ft, "Icons", None)
+    if icon_button_cls is not None and icons_cls is not None and hasattr(icons_cls, "PLAY_ARROW"):
+        return icon_button_cls(
+            icon=icons_cls.PLAY_ARROW,
+            icon_size=16,
+            tooltip="Тест звука",
+            on_click=on_click,
+        )
+    return _button("▶", on_click)
+
+
 def _is_background_lifecycle_state(event_data: Any) -> bool:
     text = str(event_data).lower()
     return any(keyword in text for keyword in ("pause", "inactive", "hide", "background"))
@@ -232,6 +245,19 @@ def app_main(page: ft.Page) -> None:
         audio_player.src = str(source.resolve())
         await audio_player.play(0)
 
+    async def play_selected_sound(sound_name: str) -> None:
+        if not sound_name:
+            feedback.value = "Выберите звук для теста"
+            page.update()
+            return
+        await play_sound_by_name(sound_name)
+
+    def sound_name_for_player(player_name: str) -> str:
+        for player in controller.state.players:
+            if player.name == player_name:
+                return player.sound_tap
+        return ""
+
     async def play_sounds_for_events(events: list[Any]) -> None:
         queued: list[str] = []
         for event in events:
@@ -358,6 +384,10 @@ def app_main(page: ft.Page) -> None:
             name_field.on_change = on_name_change
             sound_field.on_change = on_sound_change
 
+            async def on_test_sound(_: ft.ControlEvent, index: int = idx) -> None:
+                await play_selected_sound(setup_players[index].sound_tap)
+
+            sound_test_button = _small_play_button(on_test_sound)
             color_preview = ft.Container(width=26, height=26, bgcolor=player.color, border_radius=6)
 
             def on_color_selected(
@@ -386,7 +416,7 @@ def app_main(page: ft.Page) -> None:
                         ft.DataCell(ft.Text(str(idx + 1))),
                         ft.DataCell(name_field),
                         ft.DataCell(ft.Row([color_preview, color_button])),
-                        ft.DataCell(sound_field),
+                        ft.DataCell(ft.Row([sound_field, sound_test_button], spacing=8)),
                         ft.DataCell(ft.Text(format_mm_ss(float(rules_bank.value or 0)))),
                         ft.DataCell(
                             _button("Удалить", lambda _, index=idx: remove_setup_player(index))
@@ -535,7 +565,7 @@ def app_main(page: ft.Page) -> None:
                     {"old": player_name, "new": e.control.value.strip()},
                 ),
             )
-            sound_control: ft.Control = _dropdown(
+            sound_dropdown = _dropdown(
                 width=180,
                 options=sound_options(),
                 value=cfg.sound_tap,
@@ -544,6 +574,14 @@ def app_main(page: ft.Page) -> None:
                     "set_sound_tap",
                     {"player": player_name, "value": e.control.value or ""},
                 ),
+            )
+
+            async def on_test_sound(_: ft.ControlEvent, player: str = player_name) -> None:
+                await play_selected_sound(sound_name_for_player(player))
+
+            sound_control: ft.Control = ft.Row(
+                [sound_dropdown, _small_play_button(on_test_sound)],
+                spacing=8,
             )
             bank_control: ft.Control = ft.TextField(
                 value=str(int(bank_seconds)),
@@ -579,7 +617,14 @@ def app_main(page: ft.Page) -> None:
             )
         else:
             name_control = ft.Text(cfg.name)
-            sound_control = ft.Text(cfg.sound_tap or "—")
+
+            async def on_test_sound_readonly(_: ft.ControlEvent, player: str = player_name) -> None:
+                await play_selected_sound(sound_name_for_player(player))
+
+            sound_control = ft.Row(
+                [ft.Text(cfg.sound_tap or "—"), _small_play_button(on_test_sound_readonly)],
+                spacing=8,
+            )
             bank_control = ft.Text(f"{format_mm_ss(bank_seconds)} ({int(bank_seconds)}s)")
             color_control = ft.Row(
                 [
