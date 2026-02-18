@@ -96,11 +96,29 @@ def _panel(*controls: ft.Control, title: str | None = None) -> ft.Control:
     )
 
 
-def _load_material_picker() -> Any | None:
+def _load_color_picker_parts() -> tuple[Any | None, Any | None, Any | None] | None:
     if importlib.util.find_spec("flet_color_pickers") is None:
         return None
     module = importlib.import_module("flet_color_pickers")
-    return getattr(module, "MaterialPicker", None)
+    return (
+        getattr(module, "ColorPicker", None),
+        getattr(module, "PaletteType", None),
+        getattr(module, "ColorLabelType", None),
+    )
+
+
+def _dropdown(
+    *,
+    options: list[Any],
+    value: str | None = None,
+    width: int | None = None,
+    label: str | None = None,
+    on_change=None,
+) -> ft.Dropdown:  # type: ignore[no-untyped-def]
+    control = ft.Dropdown(options=options, value=value, width=width, label=label)
+    if on_change is not None:
+        control.on_change = on_change
+    return control
 
 
 def run_flet_app() -> None:
@@ -131,7 +149,7 @@ def app_main(page: ft.Page) -> None:
     store = ConfigStore(data_dir / "config.ini")
     controller = create_controller(data_dir)
     feedback = ft.Text(color=ft.Colors.RED_300)
-    material_picker_cls = _load_material_picker()
+    color_picker_parts = _load_color_picker_parts()
 
     rules_bank = ft.TextField(label="Базовый банк (сек)", value="600", width=220)
     rules_cooldown = ft.TextField(label="Cooldown (сек)", value="5", width=220)
@@ -206,19 +224,32 @@ def app_main(page: ft.Page) -> None:
         initial_color: str,
         on_selected: Callable[[str], None],
     ) -> None:
-        if material_picker_cls is None:
-            feedback.value = "Color picker недоступен: установите flet_color_pickers"
+        if color_picker_parts is None:
+            feedback.value = "Color picker недоступен: установите flet-color-pickers"
             page.update()
             return
 
-        def on_color_change(event: ft.ControlEvent) -> None:
-            on_selected(event.data)
+        color_picker_cls, palette_type_cls, color_label_type_cls = color_picker_parts
+        if color_picker_cls is None:
+            feedback.value = "ColorPicker недоступен в flet-color-pickers"
+            page.update()
+            return
 
-        picker = material_picker_cls(
-            color=initial_color,
-            on_color_change=on_color_change,
-            on_primary_change=lambda _: None,
-        )
+        picker_kwargs = {
+            "color": initial_color,
+            "on_color_change": lambda event: on_selected(event.data),
+        }
+        if palette_type_cls is not None and hasattr(palette_type_cls, "RGB_WITH_GREEN"):
+            picker_kwargs["palette_type"] = palette_type_cls.RGB_WITH_GREEN
+        if color_label_type_cls is not None and all(
+            hasattr(color_label_type_cls, attr) for attr in ("HEX", "RGB")
+        ):
+            picker_kwargs["label_types"] = [
+                color_label_type_cls.HEX,
+                color_label_type_cls.RGB,
+            ]
+
+        picker = color_picker_cls(**picker_kwargs)
 
         dialog = ft.AlertDialog(
             modal=True,
@@ -278,7 +309,7 @@ def app_main(page: ft.Page) -> None:
 
         for idx, player in enumerate(setup_players):
             name_field = ft.TextField(value=player.name, width=160)
-            sound_field = ft.Dropdown(
+            sound_field = _dropdown(
                 options=sound_options(),
                 value=player.sound_tap,
                 width=180,
@@ -470,7 +501,7 @@ def app_main(page: ft.Page) -> None:
                     {"old": player_name, "new": e.control.value.strip()},
                 ),
             )
-            sound_control: ft.Control = ft.Dropdown(
+            sound_control: ft.Control = _dropdown(
                 width=180,
                 options=sound_options(),
                 value=cfg.sound_tap,
