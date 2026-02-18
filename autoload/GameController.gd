@@ -3,9 +3,13 @@ extends Node
 signal state_changed(state: Model.GameState)
 signal route_changed(route: String)
 
-var storage := Storage.new()
-var logger := Logger.new()
-var sound := SoundService.new()
+const StorageScript := preload("res://infra/Storage.gd")
+const LoggerScript := preload("res://infra/Logger.gd")
+const SoundServiceScript := preload("res://infra/SoundService.gd")
+
+var storage = StorageScript.new()
+var event_logger = LoggerScript.new()
+var sound = SoundServiceScript.new()
 
 var state := Model.GameState.new()
 var seq: int = 1
@@ -73,7 +77,7 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	if write_log:
 		var line: String = _format_log_line(ev)
-		var ok: bool = logger.append_line(line)
+		var ok: bool = event_logger.append_line(line)
 		if not ok:
 			pass
 		seq += 1
@@ -111,10 +115,10 @@ func _apply_platform_effects() -> void:
 		route_changed.emit("setup")
 
 func _play_tap_for_current() -> void:
-	var name := state.current
-	if name == "" or not state.players.has(name):
+	var player_name: String = state.current
+	if player_name == "" or not state.players.has(player_name):
 		return
-	var p: Model.Player = state.players[name]
+	var p: Model.Player = state.players[player_name]
 	if p.sound_tap == "":
 		return
 	var stream := sound.load_audio_from_path(p.sound_tap)

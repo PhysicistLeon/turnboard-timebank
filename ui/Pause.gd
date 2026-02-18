@@ -29,9 +29,9 @@ func _render(s: Model.GameState) -> void:
 	]
 
 	list.clear()
-	for name in s.order:
-		var b: int = int(s.bank_ms.get(name, s.rules.bank_initial_ms))
-		list.add_item("%s   %s" % [name, Util.ms_to_mmss(b)])
+	for player_name in s.order:
+		var b: int = int(s.bank_ms.get(player_name, s.rules.bank_initial_ms))
+		list.add_item("%s   %s" % [player_name, Util.ms_to_mmss(b)])
 
 	$VBox/AdminActions.visible = s.admin_mode
 

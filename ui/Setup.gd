@@ -28,9 +28,9 @@ func _ready() -> void:
 
 func _render(s: Model.GameState) -> void:
 	list.clear()
-	for name in s.order:
-		var bms := int(s.bank_ms.get(name, s.rules.bank_initial_ms))
-		list.add_item("%s   %s" % [name, Util.ms_to_mmss(bms)])
+	for player_name in s.order:
+		var bms := int(s.bank_ms.get(player_name, s.rules.bank_initial_ms))
+		list.add_item("%s   %s" % [player_name, Util.ms_to_mmss(bms)])
 
 	bank.value = int(round(s.rules.bank_initial_ms / 1000.0))
 	cd.value = int(round(s.rules.cooldown_ms / 1000.0))
@@ -40,16 +40,16 @@ func _add_player() -> void:
 	var s: Model.GameState = GameController.state
 	var base := "P"
 	var i := 1
-	var name := "%s%d" % [base, i]
-	while s.players.has(name):
+	var player_name := "%s%d" % [base, i]
+	while s.players.has(player_name):
 		i += 1
-		name = "%s%d" % [base, i]
+		player_name = "%s%d" % [base, i]
 	var p := Model.Player.new()
-	p.name = name
+	p.name = player_name
 	p.color = Color.WHITE
-	s.players[name] = p
-	s.order.append(name)
-	s.bank_ms[name] = s.rules.bank_initial_ms
+	s.players[player_name] = p
+	s.order.append(player_name)
+	s.bank_ms[player_name] = s.rules.bank_initial_ms
 	_render(s)
 
 func _remove_player() -> void:
@@ -57,9 +57,9 @@ func _remove_player() -> void:
 	if idx.is_empty():
 		return
 	var i: int = idx[0]
-	var name: String = GameController.state.order[i]
-	GameController.state.players.erase(name)
-	GameController.state.bank_ms.erase(name)
+	var player_name: String = GameController.state.order[i]
+	GameController.state.players.erase(player_name)
+	GameController.state.bank_ms.erase(player_name)
 	GameController.state.order.remove_at(i)
 	_render(GameController.state)
 
@@ -97,8 +97,8 @@ func _start() -> void:
 	s.rules.cooldown_ms = int(cd.value) * 1000
 	s.rules.warn_every_ms = int(warn.value) * 1000
 
-	for name in s.players.keys():
-		s.bank_ms[name] = s.rules.bank_initial_ms
+	for player_name in s.players.keys():
+		s.bank_ms[player_name] = s.rules.bank_initial_ms
 
 	err.text = ""
 	GameController.dispatch({"type": Const.CMD_START_GAME})

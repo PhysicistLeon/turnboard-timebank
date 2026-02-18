@@ -2,15 +2,15 @@ extends RefCounted
 class_name Util
 
 static func ms_to_mmss(ms: int) -> String:
-	var sign := ""
+	var prefix := ""
 	var v := ms
 	if v < 0:
-		sign = "-"
+		prefix = "-"
 		v = -v
 	var total_sec := int(floor(v / 1000.0))
-	var mm := total_sec / 60
+	var mm: int = int(floor(float(total_sec) / 60.0))
 	var ss := total_sec % 60
-	return "%s%02d:%02d" % [sign, mm, ss]
+	return "%s%02d:%02d" % [prefix, mm, ss]
 
 static func compute_next(order: PackedStringArray, dir: int, current: String) -> String:
 	if order.is_empty():
