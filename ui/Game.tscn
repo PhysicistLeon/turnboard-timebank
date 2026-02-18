@@ -22,6 +22,7 @@ color = Color(0, 0, 0, 1)
 
 [node name="BigBtn" type="Button" parent="."]
 layout_mode = 1
+theme_override_font_sizes/font_size = 34
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -48,16 +49,20 @@ grow_vertical = 2
 
 [node name="Name" type="Label" parent="BigBtn/VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 54
 horizontal_alignment = 1
 text = "Player"
 
 [node name="Time" type="Label" parent="BigBtn/VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 92
 horizontal_alignment = 1
 text = "00:00"
 
 [node name="PauseBtn" type="Button" parent="."]
+custom_minimum_size = Vector2(220, 84)
 layout_mode = 1
+theme_override_font_sizes/font_size = 34
 anchors_preset = 10
 anchor_left = 1.0
 anchor_top = 1.0

@@ -22,67 +22,94 @@ offset_right = -24.0
 offset_bottom = -24.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/separation = 18
 
 [node name="PlayersTitle" type="Label" parent="VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 36
 text = "Игроки"
 
 [node name="PlayersList" type="ItemList" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
+fixed_icon_size = Vector2i(0, 56)
 
 [node name="HBox1" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
 [node name="AddBtn" type="Button" parent="VBox/HBox1"]
+custom_minimum_size = Vector2(88, 72)
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "+"
 
 [node name="RemoveBtn" type="Button" parent="VBox/HBox1"]
+custom_minimum_size = Vector2(88, 72)
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "-"
 
 [node name="UpBtn" type="Button" parent="VBox/HBox1"]
+custom_minimum_size = Vector2(88, 72)
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "↑"
 
 [node name="DownBtn" type="Button" parent="VBox/HBox1"]
+custom_minimum_size = Vector2(88, 72)
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "↓"
 
 [node name="RulesTitle" type="Label" parent="VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 34
 text = "Правила"
 
 [node name="GridRules" type="GridContainer" parent="VBox"]
 layout_mode = 2
 columns = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 12
 
 [node name="BankLabel" type="Label" parent="VBox/GridRules"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "Банк (сек)"
 
 [node name="BankMs" type="SpinBox" parent="VBox/GridRules"]
+custom_minimum_size = Vector2(240, 64)
 layout_mode = 2
+theme_override_font_sizes/font_size = 30
 
 [node name="CooldownLabel" type="Label" parent="VBox/GridRules"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "Cooldown (сек)"
 
 [node name="CooldownMs" type="SpinBox" parent="VBox/GridRules"]
+custom_minimum_size = Vector2(240, 64)
 layout_mode = 2
+theme_override_font_sizes/font_size = 30
 
 [node name="WarnLabel" type="Label" parent="VBox/GridRules"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "Warn every (сек)"
 
 [node name="WarnEveryMs" type="SpinBox" parent="VBox/GridRules"]
+custom_minimum_size = Vector2(240, 64)
 layout_mode = 2
+theme_override_font_sizes/font_size = 30
 
 [node name="StartBtn" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
+theme_override_font_sizes/font_size = 34
 text = "Старт"
 
 [node name="Error" type="Label" parent="VBox"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 26
 modulate = Color(1, 0.3, 0.3, 1)
