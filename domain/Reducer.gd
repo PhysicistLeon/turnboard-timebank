@@ -93,8 +93,8 @@ static func apply(s: Model.GameState, ev: Dictionary) -> Model.GameState:
 			s.bank_ms[s.current] = last.bank_after_ms
 
 		Const.EV_ADMIN_EDIT:
-			var et := ev.get("edit_type", "")
-			var p := ev.get("payload", {})
+			var et: String = String(ev.get("edit_type", ""))
+			var p: Dictionary = ev.get("payload", {})
 			match et:
 				"set_bank":
 					var name := String(p["name"])
