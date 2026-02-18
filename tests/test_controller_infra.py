@@ -55,9 +55,24 @@ def test_keep_awake_toggles_with_pause(tmp_path: Path):
 
 def test_config_store_roundtrip(tmp_path: Path):
     cfg = ConfigStore(tmp_path / "config.ini")
-    assert cfg.get_password() is None
-    cfg.save_password("secret")
-    assert cfg.get_password() == "secret"
+    payload_players = [
+        PlayerConfig(name="A", color="#112233", sound_tap="tap.wav"),
+        PlayerConfig(name="B", color="#445566", sound_tap=""),
+    ]
+    payload_rules = Rules(bank_initial=90, cooldown=3, warn_every=15)
+    cfg.save_game_config(
+        players=payload_players,
+        order=["A", "B"],
+        order_dir=OrderDir.COUNTERCLOCKWISE,
+        rules=payload_rules,
+    )
+
+    loaded = cfg.load_game_config()
+    assert loaded is not None
+    assert loaded["order"] == ["A", "B"]
+    assert loaded["order_dir"] == OrderDir.COUNTERCLOCKWISE
+    assert loaded["rules"].bank_initial == 90
+    assert [player.name for player in loaded["players"]] == ["A", "B"]
 
 
 def test_sound_repo_empty(tmp_path: Path):
