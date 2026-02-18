@@ -69,11 +69,14 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 		_play_tap_for_current()
 		Input.vibrate_handheld(60, -1.0)
 
+	var had_events: bool = false
 	for ev in result["events"]:
+		had_events = true
 		_apply_and_log_if_needed(ev, true)
 
 	_apply_platform_effects()
-	state_changed.emit(state)
+	if had_events:
+		state_changed.emit(state)
 
 func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	if write_log:
