@@ -35,3 +35,13 @@ python -m pylint src/timebank_app
 ## Документы
 - Полный продуктовый spec: `docs/product_spec_v1.md`
 - Полное архитектурное ТЗ: `docs/architecture_tz_variant2.md`
+
+
+## Целевой runtime-контекст
+- Flet: 0.80.5
+- Flutter: 3.38.7
+- Pyodide: 0.27.7
+
+## Обновлённый продуктовый приоритет
+- Таймер UI всегда отображается строго в формате `MM:SS`.
+- При перерасходе времени формат остаётся `-MM:SS` (для 100+ минут — `MMM:SS`, `MMMM:SS` и т.д.).
