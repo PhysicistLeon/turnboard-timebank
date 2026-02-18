@@ -1,0 +1,51 @@
+extends RefCounted
+class_name Const
+
+# --- Phases / Subphases ---
+enum Phase { SETUP, RUNNING, TECH_PAUSE }
+enum Subphase { NONE, COOLDOWN, COUNTDOWN }
+enum OrderDir { CW, CCW }
+
+# --- Commands ---
+const CMD_TICK := "TICK"
+const CMD_START_GAME := "START_GAME"
+const CMD_TAP := "TAP"
+const CMD_TECH_PAUSE_ON := "TECH_PAUSE_ON"
+const CMD_TECH_PAUSE_OFF := "TECH_PAUSE_OFF"
+const CMD_NEW_GAME := "NEW_GAME"
+const CMD_ADMIN_AUTH := "ADMIN_AUTH"
+const CMD_ADMIN_EDIT := "ADMIN_EDIT"
+const CMD_UNDO := "UNDO"
+const CMD_ORDER_REVERSE := "ORDER_REVERSE"
+const CMD_APP_PAUSED := "APP_PAUSED"
+const CMD_APP_RESUMED := "APP_RESUMED"
+
+# --- Events ---
+const EV_APP_START := "APP_START"
+const EV_APP_BACKGROUND := "APP_BACKGROUND"
+const EV_APP_RESUME := "APP_RESUME"
+
+const EV_GAME_START := "GAME_START"
+const EV_NEW_GAME := "NEW_GAME"
+
+const EV_TURN_START := "TURN_START"
+const EV_TURN_END := "TURN_END"
+
+const EV_COOLDOWN_START := "COOLDOWN_START"
+const EV_COOLDOWN_END := "COOLDOWN_END"
+
+const EV_WARN_LONG_TURN := "WARN_LONG_TURN"
+
+const EV_TECH_PAUSE_ON := "TECH_PAUSE_ON"
+const EV_TECH_PAUSE_OFF := "TECH_PAUSE_OFF"
+
+const EV_ADMIN_AUTH_OK := "ADMIN_AUTH_OK"
+const EV_ADMIN_AUTH_FAIL := "ADMIN_AUTH_FAIL"
+const EV_ADMIN_MODE_ON := "ADMIN_MODE_ON"
+const EV_ADMIN_MODE_OFF := "ADMIN_MODE_OFF"
+const EV_ADMIN_EDIT := "ADMIN_EDIT"
+
+const EV_ORDER_REVERSE := "ORDER_REVERSE"
+const EV_TURN_UNDO := "TURN_UNDO"
+
+const EV_ERROR := "ERROR"
