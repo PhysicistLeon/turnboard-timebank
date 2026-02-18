@@ -15,7 +15,8 @@ func _ready() -> void:
 	$VBox/AdminActions/UndoBtn.pressed.connect(_undo)
 	$VBox/AdminActions/ReverseBtn.pressed.connect(_reverse)
 
-	admin_pass.secret = true
+	admin_pass.secret = false
+	admin_pass.text_submitted.connect(_on_admin_pass_submitted)
 	_render(GameController.state)
 
 func _render(s: Model.GameState) -> void:
@@ -45,9 +46,20 @@ func _new_game() -> void:
 
 func _admin_auth() -> void:
 	GameController.play_ui_click()
-	GameController.dispatch({"type": Const.CMD_ADMIN_AUTH, "password": admin_pass.text})
-	admin_pass.text = ""
-	admin_status.text = "sent"
+	var entered_password: String = admin_pass.text
+	if entered_password.strip_edges() == "":
+		admin_status.text = "Введите пароль"
+		return
+
+	GameController.dispatch({"type": Const.CMD_ADMIN_AUTH, "password": entered_password})
+
+	if GameController.state.admin_mode:
+		admin_status.text = "Доступ разрешён"
+	else:
+		admin_status.text = "Неверный пароль"
+
+func _on_admin_pass_submitted(_text: String) -> void:
+	_admin_auth()
 
 func _undo() -> void:
 	GameController.play_ui_click()
