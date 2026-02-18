@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import flet as ft
+from flet_color_pickers import MaterialPicker
 
 from timebank_app.app.controller import GameController
 from timebank_app.domain.commands import (
@@ -25,22 +27,26 @@ from timebank_app.infra.logging import LogWriter
 from timebank_app.infra.storage import ConfigStore
 
 HALF_PULSE = 0.5
-PANEL_WIDTH = 640
+PANEL_WIDTH = 860
+ADMIN_PASSWORD = "password"
 
 
 def create_controller(data_dir: Path) -> GameController:
-    config = ConfigStore(data_dir / "config.ini")
-    password = config.get_password() or ""
+    sounds_dir = data_dir / "sounds"
+    sounds_dir.mkdir(parents=True, exist_ok=True)
     return GameController(
-        decider=Decider(password),
+        decider=Decider(ADMIN_PASSWORD),
         log_writer=LogWriter(data_dir / "logs" / "events.log"),
         effects=EffectSink(),
-        sound_repo=SoundRepo(data_dir / "sounds"),
+        sound_repo=SoundRepo(sounds_dir),
     )
 
 
 def _format_seconds(value: float) -> str:
-    return str(int(value))
+    sign = "-" if value < 0 else ""
+    total_seconds = int(abs(value))
+    minutes, seconds = divmod(total_seconds, 60)
+    return f"{sign}{minutes:02d}:{seconds:02d}"
 
 
 def _button(label: str, on_click) -> ft.Control:  # type: ignore[no-untyped-def]
@@ -79,7 +85,7 @@ def _center_alignment() -> Any:
 def _panel(*controls: ft.Control, title: str | None = None) -> ft.Control:
     content: list[ft.Control] = []
     if title:
-        content.append(ft.Text(title, size=40, text_align=ft.TextAlign.CENTER))
+        content.append(ft.Text(title, size=36, text_align=ft.TextAlign.CENTER))
     content.extend(controls)
 
     return ft.Container(
@@ -92,6 +98,7 @@ def _panel(*controls: ft.Control, title: str | None = None) -> ft.Control:
             spacing=16,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             tight=True,
+            scroll=ft.ScrollMode.AUTO,
         ),
     )
 
@@ -124,32 +131,73 @@ def app_main(page: ft.Page) -> None:
     controller = create_controller(data_dir)
 
     feedback = ft.Text(color=ft.Colors.RED_300)
-
-    password_field = ft.TextField(label="Password", password=True, can_reveal_password=True)
-    password_confirm = ft.TextField(
-        label="Confirm password", password=True, can_reveal_password=True
-    )
-
-    players_name = ft.TextField(label="Players comma-separated", value="Alice,Bob,Carol")
-    rules_bank = ft.TextField(label="bank_initial sec", value="600")
-    rules_cooldown = ft.TextField(label="cooldown sec", value="5")
-    rules_warn = ft.TextField(label="warn_every sec", value="60")
-    direction = ft.Dropdown(
-        label="Direction",
-        options=[
-            ft.dropdown.Option(OrderDir.CLOCKWISE.value),
-            ft.dropdown.Option(OrderDir.COUNTERCLOCKWISE.value),
-        ],
-        value=OrderDir.CLOCKWISE.value,
-    )
-
     timer_text = ft.Text(size=64, weight=ft.FontWeight.BOLD)
     player_text = ft.Text(size=40, weight=ft.FontWeight.BOLD)
     phase_text = ft.Text(size=20)
     exhausted_text = ft.Text("", color=ft.Colors.RED_300)
+    admin_password = ft.TextField(
+        label="Пароль администратора", password=True, can_reveal_password=True
+    )
 
-    admin_password = ft.TextField(label="Admin password", password=True, can_reveal_password=True)
+    sounds_repo = controller.sound_repo
     game_visible = False
+
+    saved = store.load_game_config()
+    if saved:
+        setup_players, setup_order, setup_rules, setup_direction = saved
+    else:
+        setup_players = [
+            PlayerConfig(name="Игрок 1", color="#ff9800"),
+            PlayerConfig(name="Игрок 2", color="#2196f3"),
+        ]
+        setup_order = [player.name for player in setup_players]
+        setup_rules = Rules(bank_initial=600, cooldown=5, warn_every=60)
+        setup_direction = OrderDir.CLOCKWISE
+
+    rules_bank = ft.TextField(
+        label="Начальный банк (сек)", value=str(int(setup_rules.bank_initial)), width=200
+    )
+    rules_cooldown = ft.TextField(
+        label="Cooldown (сек)", value=str(int(setup_rules.cooldown)), width=200
+    )
+    rules_warn = ft.TextField(
+        label="warn_every (сек)", value=str(setup_rules.warn_every), width=200
+    )
+    direction = ft.Dropdown(
+        label="Направление",
+        options=[
+            ft.dropdown.Option(OrderDir.CLOCKWISE.value, "По часовой"),
+            ft.dropdown.Option(OrderDir.COUNTERCLOCKWISE.value, "Против часовой"),
+        ],
+        value=setup_direction.value,
+        width=220,
+    )
+
+    def persist_current_config() -> None:
+        if not controller.state.players:
+            return
+        store.save_game_config(
+            players=controller.state.players,
+            order=controller.state.order,
+            rules=controller.state.rules,
+            order_dir=controller.state.order_dir,
+        )
+
+    def persist_setup_config(players: list[PlayerConfig]) -> None:
+        try:
+            rules = Rules(
+                bank_initial=float(rules_bank.value),
+                cooldown=float(rules_cooldown.value),
+                warn_every=int(rules_warn.value),
+            )
+        except ValueError:
+            return
+        store.save_game_config(
+            players=players,
+            order=[p.name for p in players],
+            rules=rules,
+            order_dir=OrderDir(direction.value),
+        )
 
     def refresh_tick() -> None:
         if not game_visible:
@@ -166,8 +214,8 @@ def app_main(page: ft.Page) -> None:
         bank = controller.state.bank.get(current, 0.0)
         timer_text.value = _format_seconds(bank)
         player_text.value = current
-        phase_text.value = f"Phase: {controller.state.turn.phase.value}"
-        exhausted_text.value = "BANK EXHAUSTED" if bank <= 0 else ""
+        phase_text.value = f"Фаза: {controller.state.turn.phase.value}"
+        exhausted_text.value = "ВРЕМЯ ИСЧЕРПАНО" if bank <= 0 else ""
 
         color = "#000000"
         for cfg in controller.state.players:
@@ -188,38 +236,207 @@ def app_main(page: ft.Page) -> None:
         page.bgcolor = color if pulse > HALF_PULSE else "#000000"
         page.update()
 
+    def setup_players_table(players: list[PlayerConfig]) -> ft.DataTable:
+        def open_color_picker(player_name: str) -> None:
+            target = next((p for p in players if p.name == player_name), None)
+            if target is None:
+                return
+
+            def on_color_change(event: ft.ControlEvent) -> None:
+                target.color = str(event.data)
+                show_setup()
+
+            picker = MaterialPicker(color=target.color, on_color_change=on_color_change)
+            page.dialog = ft.AlertDialog(title=ft.Text(f"Цвет: {player_name}"), content=picker)
+            page.dialog.open = True
+            page.update()
+
+        sounds = sounds_repo.list_files()
+        rows: list[ft.DataRow] = []
+        for idx, player in enumerate(players):
+            name_field = ft.TextField(value=player.name, width=180)
+
+            def on_name_change(
+                _: ft.ControlEvent, row_idx: int = idx, field: ft.TextField = name_field
+            ) -> None:
+                players[row_idx].name = field.value.strip() or players[row_idx].name
+                persist_setup_config(players)
+
+            name_field.on_blur = on_name_change
+            sound_dropdown = ft.Dropdown(
+                width=170,
+                value=player.sound_tap if player.sound_tap in sounds else None,
+                options=[ft.dropdown.Option("", "—")]
+                + [ft.dropdown.Option(sound_name) for sound_name in sounds],
+            )
+
+            def on_sound_change(
+                _: ft.ControlEvent, row_idx: int = idx, dd: ft.Dropdown = sound_dropdown
+            ) -> None:
+                players[row_idx].sound_tap = dd.value or ""
+                persist_setup_config(players)
+
+            sound_dropdown.on_change = on_sound_change
+            bank_field = ft.TextField(
+                value=str(int(setup_rules.bank_initial)), width=120, disabled=True
+            )
+            rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(name_field),
+                        ft.DataCell(
+                            ft.Row(
+                                [
+                                    ft.Container(
+                                        width=26, height=26, bgcolor=player.color, border_radius=6
+                                    ),
+                                    _button(
+                                        "Выбрать",
+                                        lambda _, name=player.name: open_color_picker(name),
+                                    ),
+                                ],
+                                spacing=10,
+                            )
+                        ),
+                        ft.DataCell(sound_dropdown),
+                        ft.DataCell(
+                            ft.Column(
+                                [bank_field, ft.Text(_format_seconds(setup_rules.bank_initial))]
+                            )
+                        ),
+                    ]
+                )
+            )
+        return ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("Имя")),
+                ft.DataColumn(ft.Text("Цвет")),
+                ft.DataColumn(ft.Text("Звук")),
+                ft.DataColumn(ft.Text("Банк_времени")),
+            ],
+            rows=rows,
+            column_spacing=22,
+        )
+
+    def pause_players_table() -> ft.DataTable:
+        rows: list[ft.DataRow] = []
+
+        def apply_bank(player_name: str, value: str) -> None:
+            try:
+                seconds = float(value)
+            except ValueError:
+                feedback.value = "Банк должен быть числом"
+                page.update()
+                return
+            controller.dispatch(
+                CmdAdminEdit(
+                    now_mono=time.monotonic(),
+                    edit_type="set_bank",
+                    payload={"player": player_name, "value": seconds},
+                )
+            )
+            persist_current_config()
+
+        for player_name in controller.state.order:
+            player_cfg = next((p for p in controller.state.players if p.name == player_name), None)
+            color = player_cfg.color if player_cfg else "#FFFFFF"
+            sound_tap = player_cfg.sound_tap if player_cfg else ""
+            bank_seconds = controller.state.bank.get(player_name, 0.0)
+            editable = controller.state.admin_mode
+
+            if editable:
+                bank_input = ft.TextField(value=str(int(bank_seconds)), width=120)
+                bank_input.on_blur = lambda _, name=player_name, field=bank_input: apply_bank(
+                    name, field.value
+                )
+                bank_control: ft.Control = ft.Column(
+                    [bank_input, ft.Text(_format_seconds(bank_seconds))]
+                )
+            else:
+                bank_control = ft.Text(_format_seconds(bank_seconds))
+
+            rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(player_name)),
+                        ft.DataCell(
+                            ft.Container(width=26, height=26, bgcolor=color, border_radius=6)
+                        ),
+                        ft.DataCell(ft.Text(sound_tap or "—")),
+                        ft.DataCell(bank_control),
+                    ]
+                )
+            )
+
+        return ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("Имя")),
+                ft.DataColumn(ft.Text("Цвет")),
+                ft.DataColumn(ft.Text("Звук")),
+                ft.DataColumn(ft.Text("Банк_времени")),
+            ],
+            rows=rows,
+            column_spacing=22,
+        )
+
     def show_setup() -> None:
-        nonlocal game_visible
+        nonlocal game_visible, setup_players, setup_order
         game_visible = False
+        page.bgcolor = None
         page.clean()
         feedback.value = ""
 
+        players = [replace(player) for player in setup_players]
+
+        def add_player(_: ft.ControlEvent) -> None:
+            next_idx = len(players) + 1
+            players.append(PlayerConfig(name=f"Игрок {next_idx}", color="#9e9e9e"))
+            persist_setup_config(players)
+            show_setup()
+
         def on_start(_: ft.ControlEvent) -> None:
+            nonlocal setup_players, setup_order
             try:
-                names = [part.strip() for part in players_name.value.split(",") if part.strip()]
+                cleaned_players = []
+                for index, player in enumerate(players):
+                    name = player.name.strip() or f"Игрок {index + 1}"
+                    cleaned_players.append(
+                        PlayerConfig(
+                            name=name,
+                            color=player.color,
+                            sound_tap=player.sound_tap,
+                        )
+                    )
+                names = [player.name for player in cleaned_players]
                 if len(set(names)) != len(names):
-                    feedback.value = "Names must be unique"
+                    feedback.value = "Имена игроков должны быть уникальными"
                     page.update()
                     return
-                players = [
-                    PlayerConfig(name=name, color=f"#{(index + 1) * 2:06x}")
-                    for index, name in enumerate(names)
-                ]
+
                 rules = Rules(
                     bank_initial=float(rules_bank.value),
                     cooldown=float(rules_cooldown.value),
                     warn_every=int(rules_warn.value),
                 )
+                setup_players = cleaned_players
+                setup_order = names
+                store.save_game_config(
+                    players=setup_players,
+                    order=setup_order,
+                    rules=rules,
+                    order_dir=OrderDir(direction.value),
+                )
                 controller.dispatch(
                     CmdStartGame(
                         now_mono=time.monotonic(),
                         game_id=str(int(time.time())),
-                        players=players,
-                        order=[p.name for p in players],
+                        players=setup_players,
+                        order=setup_order,
                         order_dir=OrderDir(direction.value),
                         rules=rules,
                     )
                 )
+                persist_current_config()
                 show_game()
             except (ValueError, CommandError) as exc:
                 feedback.value = str(exc)
@@ -227,38 +444,28 @@ def app_main(page: ft.Page) -> None:
 
         page.add(
             _panel(
-                players_name,
+                setup_players_table(players),
+                _button("Добавить игрока", add_player),
                 ft.ResponsiveRow(
                     controls=[
-                        ft.Container(rules_bank, col={"sm": 12, "md": 4}),
-                        ft.Container(rules_cooldown, col={"sm": 12, "md": 4}),
-                        ft.Container(rules_warn, col={"sm": 12, "md": 4}),
+                        ft.Container(rules_bank, col={"sm": 12, "md": 3}),
+                        ft.Container(rules_cooldown, col={"sm": 12, "md": 3}),
+                        ft.Container(rules_warn, col={"sm": 12, "md": 3}),
+                        ft.Container(direction, col={"sm": 12, "md": 3}),
                     ]
                 ),
-                direction,
-                _button("Start Game", on_start),
+                _button("Начать игру", on_start),
                 feedback,
-                title="Setup",
+                title="Настройки игры",
             )
         )
 
     def show_pause() -> None:
         nonlocal game_visible
         game_visible = False
+        page.bgcolor = None
         page.clean()
         feedback.value = ""
-        rows: list[ft.Control] = []
-        for name in controller.state.order:
-            rows.append(
-                ft.Row(
-                    [
-                        ft.Text(name, width=220),
-                        ft.Text(_format_seconds(controller.state.bank.get(name, 0.0))),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    width=340,
-                )
-            )
 
         def do_continue(_: ft.ControlEvent) -> None:
             controller.dispatch(CmdPauseOff(now_mono=time.monotonic()))
@@ -269,9 +476,11 @@ def app_main(page: ft.Page) -> None:
                 CmdAdminAuth(now_mono=time.monotonic(), password=admin_password.value)
             )
             feedback.value = (
-                "Admin mode enabled" if controller.state.admin_mode else "Admin password invalid"
+                "Режим администратора включен"
+                if controller.state.admin_mode
+                else "Неверный пароль администратора"
             )
-            page.update()
+            show_pause()
 
         def do_reverse(_: ft.ControlEvent) -> None:
             try:
@@ -282,7 +491,8 @@ def app_main(page: ft.Page) -> None:
                         payload={"old": controller.state.order_dir.value},
                     )
                 )
-                page.update()
+                persist_current_config()
+                show_pause()
             except CommandError as exc:
                 feedback.value = str(exc)
                 page.update()
@@ -295,23 +505,23 @@ def app_main(page: ft.Page) -> None:
                     payload={"game_id": str(int(time.time()))},
                 )
             )
+            persist_current_config()
             show_game()
 
         page.add(
             _panel(
-                ft.Text("Players bank", size=20),
-                ft.Column(rows, spacing=6, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                pause_players_table(),
                 ft.Divider(),
-                ft.Text(f"Current: {controller.state.current_player}"),
-                ft.Text(f"Phase: {controller.state.turn.phase.value}"),
-                ft.Text(f"Direction: {controller.state.order_dir.value}"),
-                _button("Continue", do_continue),
+                ft.Text(f"Текущий игрок: {controller.state.current_player}"),
+                ft.Text(f"Фаза: {controller.state.turn.phase.value}"),
+                ft.Text(f"Направление: {controller.state.order_dir.value}"),
+                _button("Продолжить", do_continue),
                 admin_password,
-                _button("Enter admin mode", do_admin_auth),
-                _button("Reverse direction", do_reverse),
-                _button("New Game", do_new_game),
+                _button("Войти в режим администратора", do_admin_auth),
+                _button("Сменить направление", do_reverse),
+                _button("Новая игра", do_new_game),
                 feedback,
-                title="Tech Pause",
+                title="Техпауза / Настройки",
             )
         )
 
@@ -324,6 +534,7 @@ def app_main(page: ft.Page) -> None:
         def do_tap(_: ft.ControlEvent) -> None:
             try:
                 controller.dispatch(CmdTap(now_mono=time.monotonic()))
+                persist_current_config()
                 redraw_game()
             except CommandError as exc:
                 feedback.value = str(exc)
@@ -358,7 +569,7 @@ def app_main(page: ft.Page) -> None:
         page.add(
             big_button,
             ft.Row(
-                [_button("Pause", do_pause), feedback],
+                [_button("Пауза", do_pause), feedback],
                 width=min(page.width or 900, 900),
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             ),
@@ -371,32 +582,7 @@ def app_main(page: ft.Page) -> None:
             refresh_tick()
             await asyncio.sleep(0.25)
 
-    if not store.get_password():
-        page.clean()
-
-        def save_password(_: ft.ControlEvent) -> None:
-            if password_field.value != password_confirm.value:
-                feedback.value = "Password mismatch"
-                page.update()
-                return
-            if not password_field.value:
-                feedback.value = "Password required"
-                page.update()
-                return
-            store.save_password(password_field.value)
-            show_setup()
-
-        page.add(
-            _panel(
-                password_field,
-                password_confirm,
-                _button("Continue", save_password),
-                feedback,
-                title="Create password",
-            )
-        )
-    else:
-        show_setup()
+    show_setup()
 
 
 if __name__ == "__main__":

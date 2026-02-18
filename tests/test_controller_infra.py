@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from timebank_app.app.controller import GameController
-from timebank_app.domain.commands import CmdPauseOn, CmdStartGame, CmdTap
+from timebank_app.domain.commands import CmdAdminAuth, CmdPauseOn, CmdStartGame, CmdTap
 from timebank_app.domain.engine import Decider
 from timebank_app.domain.models import OrderDir, PlayerConfig, Rules
 from timebank_app.infra.effects import EffectSink, SoundRepo
 from timebank_app.infra.logging import LogWriter
 from timebank_app.infra.storage import ConfigStore
+from timebank_app.ui.main import _format_seconds, create_controller
 
 
 def make_controller(tmp_path: Path) -> GameController:
@@ -60,6 +61,28 @@ def test_config_store_roundtrip(tmp_path: Path):
     assert cfg.get_password() == "secret"
 
 
+def test_config_store_game_config_roundtrip(tmp_path: Path):
+    cfg = ConfigStore(tmp_path / "config.ini")
+    players = [
+        PlayerConfig(name="A", color="#ffffff", sound_tap="tap.wav"),
+        PlayerConfig(name="B", color="#000000", sound_tap=""),
+    ]
+    rules = Rules(bank_initial=120, cooldown=2, warn_every=30)
+    cfg.save_game_config(
+        players=players,
+        order=["A", "B"],
+        rules=rules,
+        order_dir=OrderDir.COUNTERCLOCKWISE,
+    )
+    loaded = cfg.load_game_config()
+    assert loaded is not None
+    loaded_players, loaded_order, loaded_rules, loaded_order_dir = loaded
+    assert [p.name for p in loaded_players] == ["A", "B"]
+    assert loaded_order == ["A", "B"]
+    assert loaded_rules.bank_initial == 120
+    assert loaded_order_dir == OrderDir.COUNTERCLOCKWISE
+
+
 def test_sound_repo_empty(tmp_path: Path):
     repo = SoundRepo(tmp_path / "missing")
     assert repo.list_files() == []
@@ -73,3 +96,16 @@ def test_log_file_has_header(tmp_path: Path):
     writer.append("g", type("Evt", (), {"event_type": "X", "data": {}})())
     text2 = (tmp_path / "l.log").read_text(encoding="utf-8")
     assert "EVENT=X" in text2
+
+
+def test_time_format_mmss():
+    assert _format_seconds(0) == "00:00"
+    assert _format_seconds(61) == "01:01"
+    assert _format_seconds(6005) == "100:05"
+    assert _format_seconds(-61) == "-01:01"
+
+
+def test_create_controller_uses_fixed_admin_password(tmp_path: Path):
+    controller = create_controller(tmp_path)
+    response = controller.dispatch(CmdAdminAuth(now_mono=0.0, password="password"))
+    assert any(event.event_type == "ADMIN_AUTH_OK" for event in response.events)
