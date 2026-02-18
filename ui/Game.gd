@@ -15,26 +15,26 @@ func _ready() -> void:
 	_render_static(GameController.state)
 
 func _process(delta: float) -> void:
-	var s := GameController.state
+	var s: Model.GameState = GameController.state
 	if s.phase != Const.Phase.RUNNING:
 		return
 
-	var now := Time.get_ticks_msec()
-	var bank_ms := s.derive_current_bank_ms(now)
+	var now: int = Time.get_ticks_msec()
+	var bank_ms: int = s.derive_current_bank_ms(now)
 	time_lbl.text = Util.ms_to_mmss(bank_ms)
 
-	var col := Color.BLACK
+	var col: Color = Color.BLACK
 	if s.players.has(s.current):
 		col = (s.players[s.current] as Model.Player).color
 
-	var hz := Util.blink_hz(bank_ms, s.rules.bank_initial_ms, 1.0 / 60.0, 1.0)
+	var hz: float = Util.blink_hz(bank_ms, s.rules.bank_initial_ms, 1.0 / 60.0, 1.0)
 	_t0 += delta
-	var x := fposmod(_t0 * hz, 1.0)
-	var wave := (x * 2.0) if x < 0.5 else ((1.0 - x) * 2.0)
+	var x: float = fposmod(_t0 * hz, 1.0)
+	var wave: float = (x * 2.0) if x < 0.5 else ((1.0 - x) * 2.0)
 	bg.color = Color.BLACK.lerp(col, wave)
 
 func _render_static(s: Model.GameState) -> void:
-	var now := Time.get_ticks_msec()
+	var now: int = Time.get_ticks_msec()
 	name_lbl.text = s.current
 	time_lbl.text = Util.ms_to_mmss(s.derive_current_bank_ms(now))
 

@@ -111,20 +111,20 @@ class GameState:
 	func derive_current_bank_ms(now_mono_ms: int) -> int:
 		if current == "":
 			return 0
-		var eff := effective_now_mono(now_mono_ms)
+		var eff: int = effective_now_mono(now_mono_ms)
 		if phase == Const.Phase.RUNNING and subphase == Const.Subphase.COUNTDOWN:
-			var spent := max(0, eff - countdown_start_mono_ms)
+			var spent: int = maxi(0, eff - countdown_start_mono_ms)
 			return current_bank_base_ms - spent
 		return current_bank_base_ms
 
 	func derive_elapsed_no_cooldown_ms(now_mono_ms: int) -> int:
-		var eff := effective_now_mono(now_mono_ms)
+		var eff: int = effective_now_mono(now_mono_ms)
 		if phase == Const.Phase.RUNNING and subphase == Const.Subphase.COUNTDOWN:
-			return elapsed_no_cooldown_base_ms + max(0, eff - countdown_start_mono_ms)
+			return elapsed_no_cooldown_base_ms + maxi(0, eff - countdown_start_mono_ms)
 		return elapsed_no_cooldown_base_ms
 
 	func cooldown_remaining_ms(now_mono_ms: int) -> int:
 		if phase != Const.Phase.RUNNING or subphase != Const.Subphase.COOLDOWN:
 			return 0
-		var eff := effective_now_mono(now_mono_ms)
-		return max(0, cooldown_end_mono_ms - eff)
+		var eff: int = effective_now_mono(now_mono_ms)
+		return maxi(0, cooldown_end_mono_ms - eff)

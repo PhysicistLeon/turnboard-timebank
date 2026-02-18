@@ -1,5 +1,4 @@
 extends Node
-class_name GameController
 
 signal state_changed(state: Model.GameState)
 signal route_changed(route: String)
@@ -49,15 +48,15 @@ func now_wall_iso() -> String:
 	return Time.get_datetime_string_from_system(true, true)
 
 func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
-	var now := now_mono_ms()
+	var now: int = now_mono_ms()
 
 	if is_internal_event:
 		_apply_and_log_if_needed(cmd, false)
 		state_changed.emit(state)
 		return
 
-	var ctx := {"admin_password": storage.get_password()}
-	var result := Decider.decide(state, cmd, now, ctx)
+	var ctx: Dictionary = {"admin_password": storage.get_password()}
+	var result: Dictionary = Decider.decide(state, cmd, now, ctx)
 	if not bool(result["ok"]):
 		return
 
@@ -73,8 +72,8 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 
 func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	if write_log:
-		var line := _format_log_line(ev)
-		var ok := logger.append_line(line)
+		var line: String = _format_log_line(ev)
+		var ok: bool = logger.append_line(line)
 		if not ok:
 			pass
 		seq += 1
@@ -84,14 +83,14 @@ func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	state = Reducer.apply(state, ev)
 
 func _format_log_line(ev: Dictionary) -> String:
-	var ts := now_wall_iso()
-	var gid := state.game_id if state.game_id != "" else "-"
+	var ts: String = now_wall_iso()
+	var gid: String = state.game_id if state.game_id != "" else "-"
 	var t := String(ev.get("type", ""))
 	var parts: Array[String] = []
 	for k in ev.keys():
 		if k == "type":
 			continue
-		var v := ev[k]
+		var v: Variant = ev[k]
 		var sv := str(v)
 		if sv.find(" ") != -1 or sv.find(",") != -1:
 			sv = "\"" + sv + "\""

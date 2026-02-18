@@ -19,7 +19,7 @@ func _ready() -> void:
 	_render(GameController.state)
 
 func _render(s: Model.GameState) -> void:
-	var now := Time.get_ticks_msec()
+	var now: int = Time.get_ticks_msec()
 	state_line.text = "current=%s phase=%s sub=%s cd_rem=%sms admin=%s" % [
 		s.current,
 		Const.Phase.keys()[s.phase],
@@ -30,7 +30,7 @@ func _render(s: Model.GameState) -> void:
 
 	list.clear()
 	for name in s.order:
-		var b := int(s.bank_ms.get(name, s.rules.bank_initial_ms))
+		var b: int = int(s.bank_ms.get(name, s.rules.bank_initial_ms))
 		list.add_item("%s   %s" % [name, Util.ms_to_mmss(b)])
 
 	$VBox/AdminActions.visible = s.admin_mode

@@ -37,7 +37,7 @@ func _render(s: Model.GameState) -> void:
 	warn.value = int(round(s.rules.warn_every_ms / 1000.0))
 
 func _add_player() -> void:
-	var s := GameController.state
+	var s: Model.GameState = GameController.state
 	var base := "P"
 	var i := 1
 	var name := "%s%d" % [base, i]
@@ -53,46 +53,46 @@ func _add_player() -> void:
 	_render(s)
 
 func _remove_player() -> void:
-	var idx := list.get_selected_items()
+	var idx: PackedInt32Array = list.get_selected_items()
 	if idx.is_empty():
 		return
-	var i := idx[0]
-	var name := GameController.state.order[i]
+	var i: int = idx[0]
+	var name: String = GameController.state.order[i]
 	GameController.state.players.erase(name)
 	GameController.state.bank_ms.erase(name)
 	GameController.state.order.remove_at(i)
 	_render(GameController.state)
 
 func _move_up() -> void:
-	var idx := list.get_selected_items()
+	var idx: PackedInt32Array = list.get_selected_items()
 	if idx.is_empty():
 		return
-	var i := idx[0]
+	var i: int = idx[0]
 	if i <= 0:
 		return
-	var s := GameController.state
-	var a := s.order[i - 1]
+	var s: Model.GameState = GameController.state
+	var a: String = s.order[i - 1]
 	s.order[i - 1] = s.order[i]
 	s.order[i] = a
 	_render(s)
 	list.select(i - 1)
 
 func _move_down() -> void:
-	var idx := list.get_selected_items()
+	var idx: PackedInt32Array = list.get_selected_items()
 	if idx.is_empty():
 		return
-	var i := idx[0]
-	var s := GameController.state
+	var i: int = idx[0]
+	var s: Model.GameState = GameController.state
 	if i >= s.order.size() - 1:
 		return
-	var a := s.order[i + 1]
+	var a: String = s.order[i + 1]
 	s.order[i + 1] = s.order[i]
 	s.order[i] = a
 	_render(s)
 	list.select(i + 1)
 
 func _start() -> void:
-	var s := GameController.state
+	var s: Model.GameState = GameController.state
 	s.rules.bank_initial_ms = int(bank.value) * 1000
 	s.rules.cooldown_ms = int(cd.value) * 1000
 	s.rules.warn_every_ms = int(warn.value) * 1000
