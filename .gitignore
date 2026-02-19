@@ -18,3 +18,4 @@ data_*/
 mono_crash.*.json
 builds/
 sounds/
+*.uid

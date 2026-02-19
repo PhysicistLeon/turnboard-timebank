@@ -17,6 +17,7 @@ func _ready() -> void:
 	$VBox/HBox1/UpBtn.pressed.connect(_move_up)
 	$VBox/HBox1/DownBtn.pressed.connect(_move_down)
 
+	$VBox/ImportSoundsBtn.pressed.connect(_import_sounds_folder)
 	$VBox/StartBtn.pressed.connect(_start)
 
 	bank.min_value = 10
@@ -60,7 +61,6 @@ func _build_player_row(idx: int, player: Model.Player, bank_ms: int) -> HBoxCont
 	select_btn.add_theme_font_size_override("font_size", 26)
 	select_btn.pressed.connect(func() -> void:
 		_selected_index = idx
-		GameController.play_ui_click()
 		_render(GameController.state)
 	)
 	row.add_child(select_btn)
@@ -84,7 +84,6 @@ func _build_player_row(idx: int, player: Model.Player, bank_ms: int) -> HBoxCont
 	color_btn.color_changed.connect(func(new_color: Color) -> void:
 		if GameController.state.players.has(player.name):
 			(GameController.state.players[player.name] as Model.Player).color = new_color
-		GameController.play_ui_click()
 	)
 	row.add_child(color_btn)
 
@@ -129,11 +128,9 @@ func _try_rename_player(old_name: String, raw_new: String) -> void:
 			s.order[i] = new_name
 
 	err.text = ""
-	GameController.play_ui_click()
 	_render(s)
 
 func _add_player() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	var base := "P"
 	var i := 1
@@ -151,7 +148,6 @@ func _add_player() -> void:
 	_render(s)
 
 func _remove_player() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.is_empty() or _selected_index < 0:
 		return
@@ -164,7 +160,6 @@ func _remove_player() -> void:
 	_render(s)
 
 func _move_up() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.size() < 2 or _selected_index <= 0:
 		return
@@ -176,7 +171,6 @@ func _move_up() -> void:
 	_render(s)
 
 func _move_down() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.size() < 2 or _selected_index < 0 or _selected_index >= s.order.size() - 1:
 		return
@@ -188,7 +182,6 @@ func _move_down() -> void:
 	_render(s)
 
 func _start() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	s.rules.bank_initial_ms = int(bank.value) * 1000
 	s.rules.cooldown_ms = int(cd.value) * 1000
@@ -199,3 +192,27 @@ func _start() -> void:
 
 	err.text = ""
 	GameController.dispatch({"type": Const.CMD_START_GAME})
+
+func _import_sounds_folder() -> void:
+	if not DisplayServer.has_feature(DisplayServer.FEATURE_NATIVE_DIALOG_FILE):
+		err.text = "Системный файл-диалог недоступен на этой платформе"
+		return
+
+	DisplayServer.file_dialog_show(
+		"Выберите папку со звуками",
+		"",
+		"",
+		false,
+		DisplayServer.FILE_DIALOG_MODE_OPEN_DIR,
+		PackedStringArray(),
+		func(ok: bool, selected: PackedStringArray, _filter_idx: int) -> void:
+			if not ok or selected.is_empty():
+				return
+			var result: Dictionary = GameController.sound.import_mp3_folder(selected[0])
+			err.text = "Импорт: %d/%d, ошибок: %d, в библиотеке: %d" % [
+				int(result.get("imported", 0)),
+				int(result.get("total", 0)),
+				int(result.get("failed", 0)),
+				int(result.get("library_count", 0))
+			]
+	)

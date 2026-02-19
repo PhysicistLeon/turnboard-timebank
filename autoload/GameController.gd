@@ -11,7 +11,6 @@ const UI_CLICK_PATH := "res://sounds/kriakalka.mp3"
 var storage = StorageScript.new()
 var event_logger = LoggerScript.new()
 var sound = SoundServiceScript.new()
-var _ui_click_player: AudioStreamPlayer = AudioStreamPlayer.new()
 
 var state := Model.GameState.new()
 var seq: int = 1
@@ -22,8 +21,6 @@ const TICK_PERIOD := 0.10
 
 func _ready() -> void:
 	add_child(sound)
-	add_child(_ui_click_player)
-	_ui_click_player.stream = load(UI_CLICK_PATH) as AudioStream
 
 	storage.load_cfg()
 	seq = storage.get_log_seq()
@@ -71,7 +68,6 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 
 	if cmd.get("type", "") == Const.CMD_TAP and state.phase == Const.Phase.RUNNING:
 		_play_tap_for_current()
-		Input.vibrate_handheld(60, -1.0)
 
 	var had_events: bool = false
 	for ev in result["events"]:
@@ -83,11 +79,13 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 		state_changed.emit(state)
 
 func play_ui_click() -> void:
-	if _ui_click_player.stream != null:
-		_ui_click_player.stop()
-		_ui_click_player.play()
 	if OS.get_name() == "Android" or OS.get_name() == "iOS":
 		Input.vibrate_handheld(30, 0.7)
+
+func play_random_big_button_sound() -> void:
+	sound.play_random_from_library(UI_CLICK_PATH)
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+		Input.vibrate_handheld(60, -1.0)
 
 func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	if write_log:
