@@ -10,7 +10,6 @@ func _ready() -> void:
 	$VBox/SaveBtn.pressed.connect(_save)
 
 func _save() -> void:
-	GameController.play_ui_click()
 	var a: String = pass1.text
 	var b: String = pass2.text
 	if a.length() < 3:
