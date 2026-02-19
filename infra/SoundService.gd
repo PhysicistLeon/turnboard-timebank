@@ -23,7 +23,7 @@ func play_random_from_library(fallback_path: String) -> void:
 		play_stream(load(fallback_path) as AudioStream)
 		return
 
-	var path := _mp3_paths.pick_random()
+	var path: String = String(_mp3_paths.pick_random())
 	var stream := load_audio_from_path(path)
 	if stream == null:
 		play_stream(load(fallback_path) as AudioStream)
