@@ -37,15 +37,12 @@ func _render(s: Model.GameState) -> void:
 	$VBox/AdminActions.visible = s.admin_mode
 
 func _continue() -> void:
-	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_TECH_PAUSE_OFF})
 
 func _new_game() -> void:
-	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_NEW_GAME})
 
 func _admin_auth() -> void:
-	GameController.play_ui_click()
 	var entered_password: String = admin_pass.text
 	if entered_password.strip_edges() == "":
 		admin_status.text = "Введите пароль"
@@ -62,9 +59,7 @@ func _on_admin_pass_submitted(_text: String) -> void:
 	_admin_auth()
 
 func _undo() -> void:
-	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_UNDO})
 
 func _reverse() -> void:
-	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_ORDER_REVERSE})

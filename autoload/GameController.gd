@@ -6,12 +6,10 @@ signal route_changed(route: String)
 const StorageScript := preload("res://infra/Storage.gd")
 const LoggerScript := preload("res://infra/Logger.gd")
 const SoundServiceScript := preload("res://infra/SoundService.gd")
-const UI_CLICK_PATH := "res://sounds/kriakalka.mp3"
 
 var storage = StorageScript.new()
 var event_logger = LoggerScript.new()
 var sound = SoundServiceScript.new()
-var _ui_click_player: AudioStreamPlayer = AudioStreamPlayer.new()
 
 var state := Model.GameState.new()
 var seq: int = 1
@@ -22,8 +20,6 @@ const TICK_PERIOD := 0.10
 
 func _ready() -> void:
 	add_child(sound)
-	add_child(_ui_click_player)
-	_ui_click_player.stream = load(UI_CLICK_PATH) as AudioStream
 
 	storage.load_cfg()
 	seq = storage.get_log_seq()
@@ -82,12 +78,13 @@ func dispatch(cmd: Dictionary, is_internal_event := false) -> void:
 	if had_events:
 		state_changed.emit(state)
 
-func play_ui_click() -> void:
-	if _ui_click_player.stream != null:
-		_ui_click_player.stop()
-		_ui_click_player.play()
+func play_big_button_click() -> void:
+	sound.play_random_library_click()
 	if OS.get_name() == "Android" or OS.get_name() == "iOS":
 		Input.vibrate_handheld(30, 0.7)
+
+func import_sound_directory_via_picker(on_done: Callable = Callable()) -> void:
+	sound.import_mp3_directory_via_picker(on_done)
 
 func _apply_and_log_if_needed(ev: Dictionary, write_log: bool) -> void:
 	if write_log:

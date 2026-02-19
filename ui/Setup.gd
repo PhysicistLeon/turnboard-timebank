@@ -17,6 +17,7 @@ func _ready() -> void:
 	$VBox/HBox1/UpBtn.pressed.connect(_move_up)
 	$VBox/HBox1/DownBtn.pressed.connect(_move_down)
 
+	$VBox/ImportSoundsBtn.pressed.connect(_import_sounds)
 	$VBox/StartBtn.pressed.connect(_start)
 
 	bank.min_value = 10
@@ -60,7 +61,6 @@ func _build_player_row(idx: int, player: Model.Player, bank_ms: int) -> HBoxCont
 	select_btn.add_theme_font_size_override("font_size", 26)
 	select_btn.pressed.connect(func() -> void:
 		_selected_index = idx
-		GameController.play_ui_click()
 		_render(GameController.state)
 	)
 	row.add_child(select_btn)
@@ -84,7 +84,6 @@ func _build_player_row(idx: int, player: Model.Player, bank_ms: int) -> HBoxCont
 	color_btn.color_changed.connect(func(new_color: Color) -> void:
 		if GameController.state.players.has(player.name):
 			(GameController.state.players[player.name] as Model.Player).color = new_color
-		GameController.play_ui_click()
 	)
 	row.add_child(color_btn)
 
@@ -129,11 +128,9 @@ func _try_rename_player(old_name: String, raw_new: String) -> void:
 			s.order[i] = new_name
 
 	err.text = ""
-	GameController.play_ui_click()
 	_render(s)
 
 func _add_player() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	var base := "P"
 	var i := 1
@@ -151,7 +148,6 @@ func _add_player() -> void:
 	_render(s)
 
 func _remove_player() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.is_empty() or _selected_index < 0:
 		return
@@ -164,7 +160,6 @@ func _remove_player() -> void:
 	_render(s)
 
 func _move_up() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.size() < 2 or _selected_index <= 0:
 		return
@@ -176,7 +171,6 @@ func _move_up() -> void:
 	_render(s)
 
 func _move_down() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	if s.order.size() < 2 or _selected_index < 0 or _selected_index >= s.order.size() - 1:
 		return
@@ -187,8 +181,13 @@ func _move_down() -> void:
 	_selected_index += 1
 	_render(s)
 
+func _import_sounds() -> void:
+	err.text = "Открываю выбор папки..."
+	GameController.import_sound_directory_via_picker(func(message: String, _count: int) -> void:
+		err.text = message
+	)
+
 func _start() -> void:
-	GameController.play_ui_click()
 	var s: Model.GameState = GameController.state
 	s.rules.bank_initial_ms = int(bank.value) * 1000
 	s.rules.cooldown_ms = int(cd.value) * 1000

@@ -39,9 +39,8 @@ func _render_static(s: Model.GameState) -> void:
 	time_lbl.text = Util.ms_to_mmss(s.derive_current_bank_ms(now))
 
 func _tap() -> void:
-	GameController.play_ui_click()
+	GameController.play_big_button_click()
 	GameController.dispatch({"type": Const.CMD_TAP})
 
 func _pause() -> void:
-	GameController.play_ui_click()
 	GameController.dispatch({"type": Const.CMD_TECH_PAUSE_ON, "reason": "manual"})
